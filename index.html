@@ -118,25 +118,37 @@ const HAND_ORDER={DEFUSE:0,NOPE:1,SKIP:2,ATTACK:3,TARGET:4,BOTTOM:5,SHUFFLE:6,AL
 function sortedHandView(hand){if(!autoSort)return [...hand];return [...hand].sort((a,b)=>(HAND_ORDER[a.key]??50)-(HAND_ORDER[b.key]??50)||Number(a.paw)-Number(b.paw)||a.key.localeCompare(b.key))}
 function actionMeta(key,opts={}){if(key==='COMBO')return {emoji:opts.emoji||'🃏',name:opts.label||'特殊組合',desc:opts.desc||''};return CARD[key]||{emoji:opts.emoji||'✨',name:opts.label||key,desc:opts.desc||''}}
 async function showActionEvent(actor,key,target=null,opts={}){if(!G||!actor)return;if(!target&&key==='ATTACK'&&G.running)target=G.players[nextAlive(actor.id)];const host=$('#actionFx'),meta=actionMeta(key,opts);if(!host)return;host.innerHTML='';document.querySelectorAll('.seat.targeted,.seat.actionSource').forEach(x=>x.classList.remove('targeted','actionSource'));let src=document.querySelector(`.seat[data-seat="${actor.id}"]`);if(src)src.classList.add('actionSource');let tar=target?document.querySelector(`.seat[data-seat="${target.id}"]`):null;if(tar)tar.classList.add('targeted');let box=document.createElement('div');box.className='actionFlash '+(opts.theme||((key==='BOMB'||key==='IMPLODE'||key==='ATTACK'||key==='TARGET')?'danger':key==='DEFUSE'?'good':''));let targetHtml=target?`<div class=actionArrow>➜</div><div class=actionTo><span class=av>${target.avatar}</span>${target.name}</div>`:'';box.innerHTML=`<div class=actionWho><span class=av>${actor.avatar}</span>${actor.name}<div class=actionText>出牌</div></div><div class=actionCardPop><div class=big>${meta.emoji}</div><b>${meta.name}</b><small>${opts.desc||meta.desc||''}</small></div>${targetHtml}`;host.append(box);await new Promise(r=>setTimeout(r,actor.ai?Math.max(520,Math.round((opts.long?1050:760)*(aiReactionMs/1000))):(opts.long?1150:820)));box.remove();if(src)src.classList.remove('actionSource');if(tar)tar.classList.remove('targeted')}
-function getCounts(players){let counts={...NORMAL_COUNTS}; if(players>=8) for(const [k,v] of Object.entries(PAW_COUNTS)) counts[k]=(counts[k]||0)+v; return counts}
+function getDeckProfile(players){
+  if(players<=3)return [{counts:PAW_COUNTS,paw:true,label:'貓肉球卡'}];
+  if(players<=7)return [{counts:NORMAL_COUNTS,paw:false,label:'普通卡'}];
+  return [{counts:NORMAL_COUNTS,paw:false,label:'普通卡'},{counts:PAW_COUNTS,paw:true,label:'貓肉球卡'}];
+}
+function createAIMemory(n,selfId){
+  return {selfId,top:[],placedHazards:[],discardHistory:[],seenDiscardIds:new Set(),observations:[],seq:0,
+    playerIntel:Array.from({length:n},(_,i)=>({knownCounts:{},defuseKnownMin:i===selfId?0:1,lastSeen:0}))};
+}
 function initGame(n,useImploding=!!$('#implodingToggle')?.checked){
-  selected.clear(); let counts=getCounts(n), deck=[], defuses=[];
-  for(const [k,v] of Object.entries(counts)){for(let i=0;i<v;i++){let paw=n>=8 && i>= (NORMAL_COUNTS[k]||0); let c=makeCard(k,paw); if(k==='DEFUSE')defuses.push(c); else deck.push(c)}}
-  shuffle(deck); shuffle(defuses);
-  let players=[]; for(let i=0;i<n;i++) players.push({id:i,name:i===0?'你':`AI-${i}`,ai:i!==0,avatar:AVATARS[i],hand:[],alive:true,hate:Array(n).fill(0),knownTop:[],turnsTaken:0,recentTargets:[],attackCaution:false,defuseNote:true});
-  for(const p of players){for(let i=0;i<7;i++) p.hand.push(deck.pop()); p.hand.push(defuses.pop())}
-  const extraDefuses=defuses.length;
-  deck.push(...defuses);
-  const deathCards=n-1, bombCount=deathCards-(useImploding?1:0);
-  for(let i=0;i<bombCount;i++) deck.push(makeCard('BOMB'));
-  if(useImploding)deck.push(makeCard('IMPLODE'));
-  shuffle(deck);
-  G={n,players,deck,discard:[],turn:0,round:1,debt:1,attackChain:false,running:true,knownTop:[],targetHistory:[],actionSeq:0,lastAction:null,useImploding};
-  $('#startScreen').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#log').innerHTML='';
-  $('#deckMode').textContent=(n>=8?'普通卡＋貓肉球卡':'普通卡')+(useImploding?'＋黑洞貓':'');
-  log(`🧯 每位玩家先拿 1 張拆除；剩餘 <b>${extraDefuses}</b> 張拆除已洗回抽牌堆。`,'important');
-  log(useImploding?`🎴 ${n} 人局開始：死亡牌共 <b>${deathCards}</b> 張＝爆炸貓 ${bombCount} 張＋黑洞貓 1 張。`:`🎴 ${n} 人局開始。牌庫已放入 <b>${deathCards}</b> 張爆炸貓。`,'important');
-  render(); if(G.players[0].ai) aiTurn();
+  selected.clear(); let profile=getDeckProfile(n),deck=[],defuses=[];
+  for(const section of profile)for(const [k,v] of Object.entries(section.counts))for(let i=0;i<v;i++){
+    const c=makeCard(k,section.paw);if(k==='DEFUSE')defuses.push(c);else deck.push(c);
+  }
+  shuffle(deck);shuffle(defuses);
+  let players=[];for(let i=0;i<n;i++)players.push({id:i,name:i===0?'你':`AI-${i}`,ai:i!==0,avatar:AVATARS[i],hand:[],alive:true,hate:Array(n).fill(0),knownTop:[],memory:null,turnsTaken:0,recentTargets:[],attackCaution:false,defuseNote:true});
+  for(const p of players){for(let i=0;i<7;i++)p.hand.push(deck.pop());p.hand.push(defuses.pop())}
+  for(const p of players)if(p.ai){p.memory=createAIMemory(n,p.id);p.memory.playerIntel[p.id].defuseKnownMin=countKey(p,'DEFUSE')}
+  const extraDefuses=defuses.length;deck.push(...defuses);
+  // 死亡牌總數永遠固定為「玩家人數 - 1」。勾選黑洞貓只取代其中 1 張爆炸貓。
+  const deathCards=n-1,implodingCount=useImploding?1:0,bombCount=deathCards-implodingCount;
+  for(let i=0;i<bombCount;i++)deck.push(makeCard('BOMB'));if(useImploding)deck.push(makeCard('IMPLODE'));shuffle(deck);
+  const profileLabel=profile.map(x=>x.label).join('＋');
+  G={n,players,deck,discard:[],turn:0,round:1,debt:1,attackChain:false,running:true,targetHistory:[],actionSeq:0,lastAction:null,useImploding,implodingAwakened:false,
+    setup:{deathCards,bombCount,implodingCount,extraDefuses,profileLabel}};
+  $('#startScreen').classList.add('hidden');$('#app').classList.remove('hidden');$('#log').innerHTML='';
+  $('#deckMode').textContent=profileLabel+(useImploding?'＋黑洞貓':'');
+  log(`🧩 ${n} 人局牌組：<b>${profileLabel}</b>。2～3 人＝貓肉球卡、4～7 人＝普通卡、8～10 人＝兩套合併。`,'important');
+  log(`🧯 每位玩家先拿 1 張拆除；剩餘 <b>${extraDefuses}</b> 張拆除已洗回抽牌堆，因此遊戲中仍可能再抽到拆除。`,'important');
+  log(useImploding?`🎴 死亡牌固定為 <b>${deathCards}</b> 張（玩家數−1）：爆炸貓 ${bombCount} 張＋黑洞貓 1 張。`:`🎴 死亡牌固定為 <b>${deathCards}</b> 張（玩家數−1）：爆炸貓 ${bombCount} 張。`,'important');
+  render();if(G.players[0].ai)aiTurn();
 }
 function activePlayers(){return G.players.filter(p=>p.alive)}
 function nextAlive(from){let i=from; do{i=(i+1)%G.n}while(!G.players[i].alive); return i}
@@ -168,8 +180,19 @@ function comboType(cards){if(cards.length===2 && sameCombo(cards))return'PAIR';i
 function sameCombo(cards){let keys=cards.map(c=>c.key); if(new Set(keys).size===1)return true; // wild can pair/triple with cat only
   const nonWild=keys.filter(k=>k!=='WILD'); return nonWild.length>0 && nonWild.every(k=>k===nonWild[0]) && CARD[nonWild[0]].type==='cat';
 }
-function removeCards(p,cards){for(const c of cards){let idx=p.hand.findIndex(x=>x.id===c.id);if(idx>=0)G.discard.push(p.hand.splice(idx,1)[0])}}
+function removeCards(p,cards){let played=[];for(const c of cards){let idx=p.hand.findIndex(x=>x.id===c.id);if(idx>=0){let out=p.hand.splice(idx,1)[0];G.discard.push(out);played.push(out)}}if(played.length)memoryPublicPlayed(p,played)}
 function cardById(p,id){return p.hand.find(c=>c.id===id)}
+function memoryNote(ai,type,data={}){if(!ai?.ai||!ai.memory)return;ai.memory.observations.push({seq:++ai.memory.seq,type,...data});if(ai.memory.observations.length>90)ai.memory.observations.shift()}
+function memoryIntel(ai,subjectId){return ai?.memory?.playerIntel?.[subjectId]||null}
+function memoryAdjustKnown(ai,subjectId,key,delta){let intel=memoryIntel(ai,subjectId);if(!intel)return;intel.knownCounts[key]=Math.max(0,(intel.knownCounts[key]||0)+delta);intel.lastSeen=ai.memory.seq+1;if(key==='DEFUSE')intel.defuseKnownMin=Math.max(0,intel.defuseKnownMin+delta)}
+function memoryBroadcast(type,data={}){if(!G)return;for(const ai of G.players.filter(x=>x.ai&&x.memory)){memoryNote(ai,type,data);if(type==='DEFUSE_USED')memoryAdjustKnown(ai,data.playerId,'DEFUSE',-1);if(type==='RECOVER'&&data.key)memoryAdjustKnown(ai,data.playerId,data.key,1);if(type==='PUBLIC_TRANSFER'&&data.key){memoryAdjustKnown(ai,data.fromId,data.key,-1);memoryAdjustKnown(ai,data.toId,data.key,1)}}}
+function memoryPublicPlayed(actor,cards){if(!G)return;for(const ai of G.players.filter(x=>x.ai&&x.memory)){for(const c of cards){if(!ai.memory.seenDiscardIds.has(c.id)){ai.memory.seenDiscardIds.add(c.id);ai.memory.discardHistory.push({seq:++ai.memory.seq,actorId:actor.id,key:c.key,id:c.id});if(ai.memory.discardHistory.length>120)ai.memory.discardHistory.shift()}memoryAdjustKnown(ai,actor.id,c.key,-1)}}}
+function memoryPrivateTransfer(actor,target,c){for(const observer of [actor,target])if(observer?.ai&&observer.memory){memoryNote(observer,'PRIVATE_TRANSFER',{fromId:target.id,toId:actor.id,key:c.key});memoryAdjustKnown(observer,target.id,c.key,-1);memoryAdjustKnown(observer,actor.id,c.key,1)}}
+function memoryPublicTransfer(actor,target,c){memoryBroadcast('PUBLIC_TRANSFER',{fromId:target.id,toId:actor.id,key:c.key})}
+function rememberTop(ai,cards){if(!ai)return;const tokens=cards.map(c=>typeof c==='string'?c:(c.key==='IMPLODE'&&c.faceUp?'IMPLODE_UP':c.key));ai.knownTop=[...tokens];if(ai.ai&&ai.memory){ai.memory.top=[...tokens];memoryNote(ai,'SAW_TOP',{cards:[...tokens]})}}
+function rememberPlacedHazard(ai,key,pos,oldLen){if(!ai?.ai||!ai.memory)return;const depth=(oldLen-pos)+1;ai.memory.placedHazards.push({key:key==='IMPLODE'?'IMPLODE_UP':key,depth});ai.memory.placedHazards=ai.memory.placedHazards.filter(x=>x.depth<=G.deck.length);memoryNote(ai,'PLACED_HAZARD',{key,depth})}
+function clearPositionMemory(){G.players.forEach(p=>{p.knownTop=[];if(p.memory){p.memory.top=[];p.memory.placedHazards=[]}})}
+function advancePositionMemory(bottom=false){if(bottom)return;G.players.forEach(p=>{if(p.knownTop.length)p.knownTop.shift();if(p.memory){if(p.memory.top.length)p.memory.top.shift();p.memory.placedHazards=p.memory.placedHazards.map(x=>({...x,depth:x.depth-1})).filter(x=>x.depth>0)}})}
 
 const TUTORIAL_TEXT={
   DEFUSE:'抽到爆炸貓時立即使用，避免淘汰。之後把爆炸貓秘密插回抽牌堆任意位置；你可以自己挑位置或隨機插入。',
@@ -260,35 +283,35 @@ async function executeCombo(p,cards,combo,isAI){
   if(canceled){log(`🚫 ${p.name} 的特殊組合被休想取消。`,'important');render();return}
 
   if(combo==='PAIR'){
-    if(target.hand.length){let stolen;if(p.ai){let idx=Math.floor(Math.random()*target.hand.length);stolen=target.hand.splice(idx,1)[0]}else stolen=await humanStealHiddenCard(target);if(stolen){p.hand.push(stolen);addHate(target,p,2);log(`🃏 ${p.name} 用 2 張相同卡，從洗亂的牌背中抽走 ${target.name} 的 1 張牌。`,p.ai?'ai':'youlog')}}
+    if(target.hand.length){let stolen;if(p.ai){let idx=Math.floor(Math.random()*target.hand.length);stolen=target.hand.splice(idx,1)[0]}else stolen=await humanStealHiddenCard(target);if(stolen){p.hand.push(stolen);memoryPrivateTransfer(p,target,stolen);addHate(target,p,2);log(`🃏 ${p.name} 用 2 張相同卡，從洗亂的牌背中抽走 ${target.name} 的 1 張牌。`,p.ai?'ai':'youlog')}}
     return;
   }
 
   if(combo==='TRIPLE'){
-    const extra=isAI?aiDesiredCard(target):await chooseModal('🎯 三張相同生效：現在宣告你要的牌',KEYS.filter(k=>!['BOMB','IMPLODE'].includes(k)),k=>`<div class=big>${CARD[k].emoji}</div><b>${CARD[k].name}</b>`,false);
-    let idx=target.hand.findIndex(c=>c.key===extra);if(idx>=0){p.hand.push(target.hand.splice(idx,1)[0]);addHate(target,p,3);log(`🎯 ${p.name} 用 3 張相同卡向 ${target.name} 宣告「${CARD[extra].name}」，成功拿走 1 張！`,'important')}else log(`🎯 ${p.name} 宣告「${CARD[extra].name}」，但 ${target.name} 沒有。`,p.ai?'ai':'youlog');
+    const extra=isAI?aiDesiredCard(p,target):await chooseModal('🎯 三張相同生效：現在宣告你要的牌',KEYS.filter(k=>!['BOMB','IMPLODE'].includes(k)),k=>`<div class=big>${CARD[k].emoji}</div><b>${CARD[k].name}</b>`,false);
+    let idx=target.hand.findIndex(c=>c.key===extra);if(idx>=0){let taken=target.hand.splice(idx,1)[0];p.hand.push(taken);memoryPublicTransfer(p,target,taken);addHate(target,p,3);log(`🎯 ${p.name} 用 3 張相同卡向 ${target.name} 宣告「${CARD[extra].name}」，成功拿走 1 張！`,'important')}else log(`🎯 ${p.name} 宣告「${CARD[extra].name}」，但 ${target.name} 沒有。`,p.ai?'ai':'youlog');
     return;
   }
 
   // 五張不同：休想判定完成後，才讓出牌者看到並選擇棄牌。
   const recoverable=G.discard.map((c,i)=>({c,i})).filter(x=>!['BOMB','IMPLODE'].includes(x.c.key));
   if(!recoverable.length){log(`♻️ ${p.name} 的五張不同已生效，但棄牌堆沒有可回收牌。`,'important');return}
-  let extra=isAI?aiPickDiscard():await chooseModal(
+  let extra=isAI?aiPickDiscard(p):await chooseModal(
     '♻️ 五張不同生效：現在從棄牌堆任選 1 張（拆除也可以）',
     recoverable.sort((a,b)=>(b.c.key==='DEFUSE')-(a.c.key==='DEFUSE')),
     x=>`<div class=big>${CARD[x.c.key].emoji}</div><b>${CARD[x.c.key].name}</b>${x.c.key==='DEFUSE'?'<small style="display:block;color:#77e6a5;font-weight:900;margin-top:4px">★ 可回收拆除卡</small>':''}`,
     false
   );
-  let idx=isAI?extra:extra.i;if(isAI&&typeof idx!=='number')idx=G.discard.findIndex(c=>c.id===extra.id);let c=G.discard.splice(idx,1)[0];if(c){p.hand.push(c);log(`♻️ ${p.name} 用 5 張不同卡，從棄牌堆拿回「${CARD[c.key].name}」。`,'important')}
+  let idx=isAI?extra:extra.i;if(isAI&&typeof idx!=='number')idx=G.discard.findIndex(c=>c.id===extra.id);let c=G.discard.splice(idx,1)[0];if(c){p.hand.push(c);memoryBroadcast('RECOVER',{playerId:p.id,key:c.key});log(`♻️ ${p.name} 用 5 張不同卡，從棄牌堆拿回「${CARD[c.key].name}」。`,'important')}
 }
 
 async function executeAction(p,key,target,isAI){
   const name=CARD[key].name, shownTarget=key==='ATTACK'?G.players[nextAlive(p.id)]:target; log(`${CARD[key].emoji} ${p.name} 使用「${name}」${shownTarget?` → ${shownTarget.name}`:''}。`,p.ai?'ai':'youlog');
   switch(key){
-    case'SHUFFLE':shuffle(G.deck);clearKnown();break;
-    case'SEE':{let cards=G.deck.slice(-3).reverse(),top=cards.map(c=>c.key);p.knownTop=isAI?cards.map(c=>c.key==='IMPLODE'&&c.faceUp?'IMPLODE_UP':c.key):top;if(!isAI)await showFuture(top,false);break}
-    case'ALTER':{let top=G.deck.splice(Math.max(0,G.deck.length-3)).reverse();clearKnown();if(isAI){top=aiOrderFuture(p,top);for(let i=top.length-1;i>=0;i--)G.deck.push(top[i]);p.knownTop=top.map(c=>c.key==='IMPLODE'&&c.faceUp?'IMPLODE_UP':c.key)}else{top=await showReorder(top);for(let i=top.length-1;i>=0;i--)G.deck.push(top[i]);p.knownTop=top.map(c=>c.key)}break}
-    case'FAVOR':{if(target.hand.length){let chosen=target.ai?aiGiveCard(target,p):await humanGiveCard(target,p);p.hand.push(chosen);addHate(target,p,1.4);markTarget(p,target);log(`🤲 ${target.name} 給了 ${p.name} 1 張牌。`,target.ai?'ai':'youlog')}break}
+    case'SHUFFLE':shuffle(G.deck);clearKnown();memoryBroadcast('SHUFFLE',{playerId:p.id});break;
+    case'SEE':{let cards=G.deck.slice(-3).reverse(),top=cards.map(c=>c.key);rememberTop(p,cards);if(!isAI)await showFuture(top,false);break}
+    case'ALTER':{let top=G.deck.splice(Math.max(0,G.deck.length-3)).reverse();clearKnown();if(isAI){top=aiOrderFuture(p,top);for(let i=top.length-1;i>=0;i--)G.deck.push(top[i]);rememberTop(p,top)}else{top=await showReorder(top);for(let i=top.length-1;i>=0;i--)G.deck.push(top[i]);rememberTop(p,top)}memoryBroadcast('ALTER',{playerId:p.id});break}
+    case'FAVOR':{if(target.hand.length){let chosen=target.ai?aiGiveCard(target,p):await humanGiveCard(target,p);p.hand.push(chosen);memoryPrivateTransfer(p,target,chosen);addHate(target,p,1.4);markTarget(p,target);log(`🤲 ${target.name} 給了 ${p.name} 1 張牌。`,target.ai?'ai':'youlog')}break}
     case'ATTACK':{let t=nextAlive(p.id);const stacked=G.attackChain;const nextDebt=stacked?G.debt+2:2;G.turn=t;G.debt=nextDebt;G.attackChain=true;addHate(G.players[t],p,1.2);log(`⚔️ 攻擊回合${stacked?'疊加':''}：${G.players[t].name} 必須執行 ${nextDebt} 回合。`,'important');endTurnNoDraw(p,true);return}
     case'TARGET':{const stacked=G.attackChain;const nextDebt=stacked?G.debt+2:2;G.turn=target.id;G.debt=nextDebt;G.attackChain=true;addHate(target,p,2.8);markTarget(p,target);log(`🎯 鎖定攻擊回合${stacked?'疊加':''}：${target.name} 必須執行 ${nextDebt} 回合。`,'important');endTurnNoDraw(p,true);return}
     case'SKIP':endTurnNoDraw(p,false);return;
@@ -297,7 +320,7 @@ async function executeAction(p,key,target,isAI){
 }
 function addHate(victim,source,amount){if(victim.ai&&victim.id!==source.id)victim.hate[source.id]+=amount}
 function markTarget(source,target){source.recentTargets.push(target.id);if(source.recentTargets.length>5)source.recentTargets.shift();G.targetHistory.push({source:source.id,target:target.id,seq:++G.actionSeq});if(G.targetHistory.length>10)G.targetHistory.shift()}
-function clearKnown(){G.players.forEach(p=>p.knownTop=[])}
+function clearKnown(){clearPositionMemory()}
 async function humanGiveCard(human,to){let c=await chooseModal(`${to.name} 向你索取恩惠`,human.hand.filter(c=>!['BOMB','IMPLODE'].includes(c.key)),c=>`<div class=big>${CARD[c.key].emoji}</div><b>${CARD[c.key].name}</b>`);human.hand.splice(human.hand.findIndex(x=>x.id===c.id),1);return c}
 async function humanStealHiddenCard(target){return new Promise(resolve=>{
   const root=$('#modalRoot'),back=document.createElement('div');back.className='modalBack';
@@ -349,10 +372,10 @@ async function drawFor(p,bottom=false){
     if(!c.faceUp){
       log(`🕳️ ${p.name} 第一次抽到黑洞貓！不使用拆除，必須將它正面插回牌堆。`,'important');
       render(); await showActionEvent(p,'IMPLODE',null,{label:'黑洞貓首次現身',desc:'正面插回牌堆；下次抽到必死',theme:'danger',long:true});
-      c.faceUp=true;
+      c.faceUp=true;G.implodingAwakened=true;memoryBroadcast('IMPLODE_AWAKENED',{playerId:p.id});
       let oldLen=G.deck.length,pos=p.ai?aiImplodingInsert(p):await askImplodingInsert();
       G.deck.splice(pos,0,c);clearKnown();
-      if(p.ai&&pos===oldLen)p.knownTop=['IMPLODE_UP'];
+      if(p.ai){rememberPlacedHazard(p,'IMPLODE',pos,oldLen);if(pos===oldLen)rememberTop(p,[c])}
       log(`🕳️ ${p.name} 已將黑洞貓正面插回牌堆。拆除卡對它無效。`,'important');
       endTurnAfterDraw(p);
     }else{
@@ -361,10 +384,10 @@ async function drawFor(p,bottom=false){
       p.alive=false;G.discard.push(c,...p.hand.splice(0));if(p.id===0)toast('你被黑洞貓淘汰了！');checkWin();if(G.running)advanceAfterDeath(p);
     }
   }else if(c.key==='BOMB'){
-    log(`💥 ${p.name} 抽到了爆炸貓！`,'important');render();await showActionEvent(p,'BOMB',null,{label:'抽到爆炸貓！',desc:'危險！',theme:'danger',long:true});let d=p.hand.find(x=>x.key==='DEFUSE');if(d){p.hand.splice(p.hand.indexOf(d),1);G.discard.push(d);let oldLen=G.deck.length,pos=p.ai?aiBombInsert(p):await askBombInsert();G.deck.splice(pos,0,c);clearKnown();if(p.ai&&pos===oldLen)p.knownTop=['BOMB'];if(p.ai&&G.debt>1)p.attackCaution=true;log(`🧯 ${p.name} 使用拆除，將爆炸貓放回牌堆。`,'important');render();await showActionEvent(p,'DEFUSE',null,{desc:'解除爆炸並放回牌堆',theme:'good'}); if(!p.ai)toast('成功拆除！');endTurnAfterDraw(p)}else{p.alive=false;G.discard.push(c,...p.hand.splice(0));log(`☠️ ${p.name} 爆炸淘汰！`,'important'); if(p.id===0)toast('你爆炸了！');checkWin();if(G.running)advanceAfterDeath(p)}
+    log(`💥 ${p.name} 抽到了爆炸貓！`,'important');render();await showActionEvent(p,'BOMB',null,{label:'抽到爆炸貓！',desc:'危險！',theme:'danger',long:true});let d=p.hand.find(x=>x.key==='DEFUSE');if(d){p.hand.splice(p.hand.indexOf(d),1);G.discard.push(d);memoryPublicPlayed(p,[d]);memoryBroadcast('DEFUSE_USED',{playerId:p.id});let oldLen=G.deck.length,pos=p.ai?aiBombInsert(p):await askBombInsert();G.deck.splice(pos,0,c);clearKnown();if(p.ai){rememberPlacedHazard(p,'BOMB',pos,oldLen);if(pos===oldLen)rememberTop(p,[c])}if(p.ai&&G.debt>1)p.attackCaution=true;log(`🧯 ${p.name} 使用拆除，將爆炸貓放回牌堆。`,'important');render();await showActionEvent(p,'DEFUSE',null,{desc:'解除爆炸並放回牌堆',theme:'good'}); if(!p.ai)toast('成功拆除！');endTurnAfterDraw(p)}else{p.alive=false;G.discard.push(c,...p.hand.splice(0));log(`☠️ ${p.name} 爆炸淘汰！`,'important'); if(p.id===0)toast('你爆炸了！');checkWin();if(G.running)advanceAfterDeath(p)}
   }else{p.hand.push(c);if(!p.ai)toast(`抽到：${CARD[c.key].name}`);endTurnAfterDraw(p)}render();
 }
-function clearKnownAfterDraw(k,bottom=false){if(bottom)return;G.players.forEach(p=>{if(p.knownTop.length)p.knownTop.shift()})}
+function clearKnownAfterDraw(k,bottom=false){advancePositionMemory(bottom)}
 function aiBombInsert(p){
   const n=G.deck.length;
   const remainingForced=Math.max(0,G.debt-1); // 這次抽牌結束後，自己還欠幾個連續回合
@@ -449,7 +472,7 @@ async function reactionNope(actor,key,target,context={}){
       if(r.ai)await aiPause(.35);
 
       const c=r.hand.find(x=>x.key==='NOPE');
-      r.hand.splice(r.hand.indexOf(c),1);G.discard.push(c);
+      r.hand.splice(r.hand.indexOf(c),1);G.discard.push(c);memoryPublicPlayed(r,[c]);
       chain++;canceled=!canceled;
       const opposed=lastNope||actor;
       addHate(opposed,r,1.8);
@@ -511,48 +534,169 @@ async function askHumanNope(info){
 }
 async function showFuture(keys){return new Promise(resolve=>{let b=document.createElement('div');b.className='modalBack';b.innerHTML=`<div class=modal><h2>👁️ 預見未來</h2><p><b>數字就是抽牌順序。</b> 1 是下一張，接著 2、3；只能查看，不能改動。</p><div class=futureRow>${keys.map((k,i)=>`<div class="futureCard ${i===0?'first':''}"><span class=futureIndex>${i+1}</span><div class=big>${CARD[k].emoji}</div><b>${CARD[k].name}</b><div class=futureOrderLabel>${i===0?'下一張':`第 ${i+1} 張`}</div></div>`).join('')}</div><button class="btn primary" style="width:100%">知道了</button></div>`;$('#modalRoot').append(b);b.querySelector('button').onclick=()=>{b.remove();resolve()}})}
 async function showReorder(cards){return new Promise(resolve=>{let arr=[...cards],b=document.createElement('div');b.className='modalBack';function draw(){b.innerHTML=`<div class=modal><h2>🔮 改寫未來</h2><p><b>1 → 2 → 3 就是之後的抽牌順序。</b> 把你想先出現的牌移到 1。</p><div class=futureRow>${arr.map((c,i)=>`<div class="futureCard ${i===0?'first':''}"><span class=futureIndex>${i+1}</span><div class=big>${CARD[c.key].emoji}</div><b>${CARD[c.key].name}</b><div class=futureOrderLabel>${i===0?'下一張':`第 ${i+1} 張`}</div><div class=futureControls><button data-i=${i} data-d=-1 title="往前移">←</button><button data-i=${i} data-d=1 title="往後移">→</button></div></div>`).join('')}</div><button class="btn primary ok" style="width:100%">確認 1 → 2 → 3 順序</button></div>`;b.querySelectorAll('[data-i]').forEach(x=>x.onclick=()=>{let i=+x.dataset.i,j=i+(+x.dataset.d);if(j>=0&&j<arr.length){[arr[i],arr[j]]=[arr[j],arr[i]];draw()}});b.querySelector('.ok').onclick=()=>{b.remove();resolve(arr)}}draw();$('#modalRoot').append(b)})}
-function aiOrderFuture(p,cards){let danger=cards.filter(c=>c.key==='BOMB'||(c.key==='IMPLODE'&&c.faceUp)),safe=cards.filter(c=>!danger.includes(c)).sort((a,b)=>aiCardValue(b.key)-aiCardValue(a.key));return [...safe,...danger]}
-function aiChooseTarget(ai,mode){let candidates=G.players.filter(p=>p.alive&&p.id!==ai.id);let ownHumanRecent=ai.recentTargets.filter(x=>x===0).length;let globalHumanRecent=G.targetHistory.slice(-6).filter(x=>x.target===0&&G.players[x.source]?.ai).length;let scored=candidates.map(t=>{let h=ai.hate[t.id]||0,hand=t.hand.length,leader=hand*.12;let antiDogpile=t.id===0?(ownHumanRecent*3.2+globalHumanRecent*2.4):0;let revenge=t.id===0&&h>=4?Math.min(antiDogpile*.65,h*.9):0;return {t,s:h*1.55+leader-antiDogpile+revenge+Math.random()*2}}).sort((a,b)=>b.s-a.s);let t=scored[0].t;markTarget(ai,t);return t}
-function aiDesiredCard(target){let desired=['DEFUSE','NOPE','SKIP','ATTACK','TARGET','SHUFFLE','ALTER','BOTTOM'];for(const k of desired)if(Math.random()<.65)return k;return desired[Math.floor(Math.random()*desired.length)]}
-function aiPickDiscard(){let best=-1,bs=-1;G.discard.forEach((c,i)=>{let s=aiCardValue(c.key);if(s>bs&&!['BOMB','IMPLODE'].includes(c.key)){best=i;bs=s}});return best<0?G.discard.length-1:best}
-function aiKnownBomb(ai){const top=G.deck[G.deck.length-1];return ai.knownTop[0]==='BOMB'||ai.knownTop[0]==='IMPLODE_UP'||(top?.key==='IMPLODE'&&top.faceUp)}
-function countKey(p,k){return p.hand.filter(c=>c.key===k).length}
-function findComboAI(p){
-  // 5 distinct if discard has high value and hand is large
-  if(p.hand.length>=8&&G.discard.some(c=>aiCardValue(c.key)>=70)){
-    let uniq=[];for(const c of [...p.hand].sort((a,b)=>aiCardValue(a.key)-aiCardValue(b.key))){if(!uniq.some(x=>x.key===c.key)&&c.key!=='DEFUSE'&&c.key!=='NOPE')uniq.push(c);if(uniq.length===5)return{type:'FIVE',cards:uniq}}
+function aiOrderFuture(p,cards){
+  // 安全牌優先放前面；若自己仍欠多回合，會盡量把已知死亡牌推到強制抽牌範圍之外。
+  let danger=cards.filter(c=>c.key==='BOMB'||(c.key==='IMPLODE'&&c.faceUp));
+  let safe=cards.filter(c=>!danger.includes(c)).sort((a,b)=>aiCardValue(b.key)-aiCardValue(a.key));
+  return [...safe,...danger];
+}
+function syncAIMemory(ai){
+  if(!ai?.ai||!ai.memory)return;
+  // 棄牌堆是公開資訊，但每隻 AI 都保留自己的獨立歷史副本，不共享同一個物件。
+  for(const c of G.discard)if(!ai.memory.seenDiscardIds.has(c.id)){
+    ai.memory.seenDiscardIds.add(c.id);ai.memory.discardHistory.push({seq:++ai.memory.seq,actorId:null,key:c.key,id:c.id});
+    if(ai.memory.discardHistory.length>120)ai.memory.discardHistory.shift();
   }
-  let groups={};p.hand.forEach(c=>(groups[c.key]??=[]).push(c));let triple=Object.values(groups).find(g=>g.length>=3&&aiCardValue(g[0].key)<65);if(triple&&Math.random()<.28)return{type:'TRIPLE',cards:triple.slice(0,3)};let pair=Object.values(groups).find(g=>g.length>=2&&aiCardValue(g[0].key)<52);if(pair&&Math.random()<.22)return{type:'PAIR',cards:pair.slice(0,2)};return null;
+}
+function aiKnownHazardWithin(ai,steps=1){
+  if(!ai)return false;
+  const known=ai.knownTop||[];
+  for(let i=0;i<Math.min(steps,known.length);i++)if(known[i]==='BOMB'||known[i]==='IMPLODE_UP')return true;
+  if(ai.memory?.placedHazards?.some(x=>x.depth<=steps))return true;
+  const top=G.deck.at(-1);return steps>=1&&top?.key==='IMPLODE'&&top.faceUp;
+}
+function aiKnownBomb(ai){return aiKnownHazardWithin(ai,1)}
+function aiEstimateDeathRisk(ai,steps=1){
+  if(aiKnownHazardWithin(ai,steps))return 1;
+  if(ai.knownTop?.length&&ai.knownTop[0]&&ai.knownTop[0]!=='BOMB'&&ai.knownTop[0]!=='IMPLODE_UP'){
+    if(steps===1)return 0;
+  }
+  const bombsGone=G.discard.filter(c=>c.key==='BOMB').length;
+  const bombs=Math.max(0,(G.setup?.bombCount??(G.n-1))-bombsGone);
+  const implodeGone=G.discard.some(c=>c.key==='IMPLODE');
+  const implodeLethal=(G.useImploding&&G.implodingAwakened&&!implodeGone)?1:0;
+  const lethal=bombs+implodeLethal, deckN=Math.max(1,G.deck.length);
+  let one=Math.min(.98,lethal/deckN);
+  // 多回合時估算至少碰到一次死亡牌的機率；這只是 AI 的公開資訊估計，不偷看牌序。
+  let risk=1-Math.pow(1-one,Math.max(1,steps));
+  if(countKey(ai,'DEFUSE')===0)risk=Math.min(1,risk*1.22);else if(countKey(ai,'DEFUSE')>=2)risk*=.72;else risk*=.88;
+  return Math.max(0,Math.min(1,risk));
+}
+function aiKnownCardValue(ai,target){
+  const intel=memoryIntel(ai,target.id);if(!intel)return 0;
+  let v=0;for(const [k,n] of Object.entries(intel.knownCounts))if(n>0)v+=Math.min(120,aiCardValue(k))*n*.018;
+  v+=Math.max(0,intel.defuseKnownMin||0)*1.5;return v;
+}
+function aiChooseTarget(ai,mode){
+  syncAIMemory(ai);
+  let candidates=G.players.filter(p=>p.alive&&p.id!==ai.id),ownHumanRecent=ai.recentTargets.filter(x=>x===0).length;
+  let globalHumanRecent=G.targetHistory.slice(-6).filter(x=>x.target===0&&G.players[x.source]?.ai).length;
+  let scored=candidates.map(t=>{
+    const intel=memoryIntel(ai,t.id),h=ai.hate[t.id]||0,hand=t.hand.length;
+    const knownPower=aiKnownCardValue(ai,t),knownDef=intel?.defuseKnownMin||0;
+    let threat=hand*.12+knownPower, vulnerability=knownDef===0?1.15:-Math.min(1.2,knownDef*.45);
+    if(mode==='TRIPLE')threat+=knownPower*1.35;
+    if(mode==='TARGET'||mode==='ATTACK')threat+=vulnerability*1.5;
+    if(mode==='PAIR'||mode==='FAVOR')threat+=hand*.05;
+    let antiDogpile=t.id===0?(ownHumanRecent*3.2+globalHumanRecent*2.4):0;
+    let revenge=t.id===0&&h>=4?Math.min(antiDogpile*.65,h*.9):0;
+    return {t,s:h*1.5+threat+vulnerability-antiDogpile+revenge+Math.random()*1.7};
+  }).sort((a,b)=>b.s-a.s);
+  let t=scored[0].t;markTarget(ai,t);return t;
+}
+function aiDesiredCard(ai,target){
+  syncAIMemory(ai);const intel=memoryIntel(ai,target.id),known=intel?.knownCounts||{};
+  // 只利用這隻 AI 自己記得的資訊。若它曾看見目標公開取得某張牌，就優先宣告。
+  let certain=Object.keys(known).filter(k=>(known[k]||0)>0&&!['BOMB','IMPLODE'].includes(k)).sort((a,b)=>aiCardValue(b)-aiCardValue(a));
+  if((intel?.defuseKnownMin||0)>0&&!certain.includes('DEFUSE'))certain.unshift('DEFUSE');
+  if(certain.length)return certain[0];
+  const risk=aiEstimateDeathRisk(ai,Math.max(1,G.debt));
+  const desired=risk>.35?['DEFUSE','NOPE','SKIP','ATTACK','TARGET','ALTER','SEE','SHUFFLE','BOTTOM']:['DEFUSE','NOPE','ATTACK','TARGET','SKIP','ALTER','SEE','FAVOR'];
+  return desired[Math.floor(Math.random()*desired.length)];
+}
+function aiDiscardScore(ai,c){
+  let s=aiCardValue(c.key),risk=aiEstimateDeathRisk(ai,Math.max(1,G.debt)),ownDef=countKey(ai,'DEFUSE');
+  if(c.key==='DEFUSE'){s+=ownDef===0?95:ownDef===1?35:-25;s+=risk*70}
+  if(c.key==='NOPE')s+=risk*18;
+  if(['SKIP','ATTACK','TARGET','ALTER'].includes(c.key))s+=risk*24;
+  return s;
+}
+function aiPickDiscard(ai){
+  let best=-1,bs=-Infinity;G.discard.forEach((c,i)=>{if(['BOMB','IMPLODE'].includes(c.key))return;let s=aiDiscardScore(ai,c);if(s>bs){best=i;bs=s}});return best;
+}
+function countKey(p,k){return p.hand.filter(c=>c.key===k).length}
+function aiFiveCandidate(p){
+  const uniq=[];
+  const sacrificeValue=c=>{
+    let v=aiCardValue(c.key);if(c.key==='DEFUSE')v+=100;if(c.key==='NOPE')v+=75;if(['ATTACK','TARGET','SKIP'].includes(c.key))v+=20;return v;
+  };
+  for(const c of [...p.hand].sort((a,b)=>sacrificeValue(a)-sacrificeValue(b))){if(!uniq.some(x=>x.key===c.key)){uniq.push(c);if(uniq.length===5)break}}
+  return uniq.length===5?uniq:null;
+}
+function findComboAI(p){
+  syncAIMemory(p);const risk=aiEstimateDeathRisk(p,Math.max(1,G.debt));
+  const five=aiFiveCandidate(p);
+  if(five&&p.hand.length>=7){
+    const recoverable=G.discard.filter(c=>!['BOMB','IMPLODE'].includes(c.key));
+    if(recoverable.length){
+      const best=Math.max(...recoverable.map(c=>aiDiscardScore(p,c)));
+      const cost=five.reduce((sum,c)=>sum+Math.min(85,aiCardValue(c.key)),0);
+      const ownDef=countKey(p,'DEFUSE');
+      // 不再看見拆除就無腦五換一；無拆除且風險高時才明顯提高意願。
+      let threshold=cost*.82+(p.hand.length<=8?18:0)+(ownDef>=2?42:ownDef===1?12:-18)-risk*42;
+      if(best>threshold&&Math.random()<(ownDef===0?0.72:0.38))return{type:'FIVE',cards:five};
+    }
+  }
+  let groups={};p.hand.forEach(c=>(groups[c.key]??=[]).push(c));
+  let triple=Object.values(groups).filter(g=>g.length>=3&&aiCardValue(g[0].key)<65).sort((a,b)=>aiCardValue(a[0].key)-aiCardValue(b[0].key))[0];
+  if(triple){
+    const hasUsefulMemory=G.players.some(t=>t.alive&&t.id!==p.id&&((memoryIntel(p,t.id)?.defuseKnownMin||0)>0||aiKnownCardValue(p,t)>1));
+    if(hasUsefulMemory||Math.random()<.16)return{type:'TRIPLE',cards:triple.slice(0,3)};
+  }
+  let pair=Object.values(groups).filter(g=>g.length>=2&&aiCardValue(g[0].key)<52).sort((a,b)=>aiCardValue(a[0].key)-aiCardValue(b[0].key))[0];
+  if(pair&&Math.random()<(p.hand.length>=10?.28:.16))return{type:'PAIR',cards:pair.slice(0,2)};
+  return null;
+}
+function aiDefensiveChoice(ai,risk){
+  const noInfo=!ai.knownTop.length;
+  if(aiKnownBomb(ai))return ['ATTACK','TARGET','SKIP','ALTER','BOTTOM','SHUFFLE'].find(k=>countKey(ai,k)>0)||null;
+  // 未知高風險時，洗混不會降低整體死亡密度，因此先蒐集資訊或轉嫁回合，而不是浪費洗混。
+  if(noInfo&&countKey(ai,'SEE'))return 'SEE';
+  if(noInfo&&countKey(ai,'ALTER'))return 'ALTER';
+  if(risk>=.58&&countKey(ai,'ATTACK'))return 'ATTACK';
+  if(risk>=.58&&countKey(ai,'TARGET'))return 'TARGET';
+  if(risk>=.62&&countKey(ai,'SKIP'))return 'SKIP';
+  if(risk>=.38&&noInfo&&countKey(ai,'SEE'))return 'SEE';
+  return null;
 }
 async function aiTurn(){
-  if(!G.running)return;let ai=G.players[G.turn];if(!ai.ai||!ai.alive)return;render();await aiPause(.45);ai.turnsTaken++;
-  let safety=aiKnownBomb(ai); let actions=0;
-  while(G.running&&G.turn===ai.id&&actions<4){
-    let combo=findComboAI(ai); if(combo&&!safety){await executeCombo(ai,combo.cards,combo.type,true);actions++;render();await aiPause(.45);continue}
+  if(!G.running)return;let ai=G.players[G.turn];if(!ai.ai||!ai.alive)return;syncAIMemory(ai);render();await aiPause(.45);ai.turnsTaken++;
+  let actions=0;
+  while(G.running&&G.turn===ai.id&&actions<5){
+    const forced=Math.max(1,G.debt),knownDanger=aiKnownHazardWithin(ai,forced),risk=aiEstimateDeathRisk(ai,forced);
+    let combo=findComboAI(ai);
+    if(combo&&!knownDanger&&risk<.62){await executeCombo(ai,combo.cards,combo.type,true);actions++;render();await aiPause(.42);continue}
     let key=null,target=null;
-    if(safety){
-      // 已知下一張會爆：優先把整個攻擊債轉走，其次跳過，再處理牌堆。
+    if(aiKnownBomb(ai)){
       key=['ATTACK','TARGET','SKIP','ALTER','BOTTOM','SHUFFLE'].find(k=>countKey(ai,k)>0);
       if(!key){await drawFor(ai,false);return}
-    } else if(G.debt>1||ai.attackCaution){
-      // 被攻擊、或剛在攻擊鏈中拆過炸彈：優先降低再次抽牌風險。
-      // Attack/Target 可以把整個剩餘回合債轉走；Skip 至少少抽一次。
+    }else if(G.debt>1||ai.attackCaution){
+      // 攻擊債務是最高優先級；若私人記憶知道第 2/3 張有死亡牌，也視為立即危險。
       if(countKey(ai,'ATTACK'))key='ATTACK';
       else if(countKey(ai,'TARGET')){key='TARGET';target=aiChooseTarget(ai,'TARGET')}
       else if(countKey(ai,'SKIP'))key='SKIP';
-      else if(countKey(ai,'SEE')&&ai.knownTop.length===0)key='SEE';
-      else if(countKey(ai,'ALTER')&&ai.knownTop.length===0)key='ALTER';
-      else break;
-    } else {
-      // See future sometimes
-      if(countKey(ai,'SEE')&&ai.knownTop.length===0&&Math.random()<.33)key='SEE';
-      else if(countKey(ai,'FAVOR')&&Math.random()<.12){key='FAVOR';target=aiChooseTarget(ai,'FAVOR')}
-      else if(countKey(ai,'TARGET')&&Math.random()<.11){key='TARGET';target=aiChooseTarget(ai,'TARGET')}
-      else if(countKey(ai,'ATTACK')&&Math.random()<.09)key='ATTACK';
-      else if(countKey(ai,'ALTER')&&Math.random()<.06)key='ALTER';
-      else break;
+      else key=aiDefensiveChoice(ai,risk);
+      if(!key&&knownDanger&&countKey(ai,'ALTER'))key='ALTER';
+      if(!key)break;
+    }else{
+      key=aiDefensiveChoice(ai,risk);
+      if(!key){
+        // 已知下一張安全時更願意做進攻／資源操作；風險越低越不浪費保命牌。
+        if(countKey(ai,'FAVOR')&&Math.random()<.13){key='FAVOR';target=aiChooseTarget(ai,'FAVOR')}
+        else if(countKey(ai,'TARGET')&&Math.random()<(.08+(1-risk)*.05)){key='TARGET';target=aiChooseTarget(ai,'TARGET')}
+        else if(countKey(ai,'ATTACK')&&Math.random()<(.07+(1-risk)*.04))key='ATTACK';
+        else if(countKey(ai,'SEE')&&!ai.knownTop.length&&Math.random()<(risk>.2?.42:.18))key='SEE';
+        else if(countKey(ai,'ALTER')&&!ai.knownTop.length&&Math.random()<(risk>.28?.24:.07))key='ALTER';
+        else break;
+      }
     }
-    if(key){if(key==='TARGET'&&!target)target=aiChooseTarget(ai,'TARGET');if(key==='FAVOR'&&!target)target=aiChooseTarget(ai,'FAVOR');let c=ai.hand.find(x=>x.key===key);ai.hand.splice(ai.hand.indexOf(c),1);G.discard.push(c);render();await showActionEvent(ai,key,target);let canceled=await reactionNope(ai,key,target);if(!canceled){await executeAction(ai,key,target,true);if(['SKIP','ATTACK','TARGET','BOTTOM'].includes(key))return}else log(`🚫 ${ai.name} 的「${CARD[key].name}」失效。`,'important');actions++;safety=aiKnownBomb(ai);render();await aiPause(.45)}else break;
+    if(key){
+      if(key==='TARGET'&&!target)target=aiChooseTarget(ai,'TARGET');if(key==='FAVOR'&&!target)target=aiChooseTarget(ai,'FAVOR');
+      let c=ai.hand.find(x=>x.key===key);if(!c)break;ai.hand.splice(ai.hand.indexOf(c),1);G.discard.push(c);memoryPublicPlayed(ai,[c]);render();
+      await showActionEvent(ai,key,target);let canceled=await reactionNope(ai,key,target);
+      if(!canceled){await executeAction(ai,key,target,true);if(['SKIP','ATTACK','TARGET','BOTTOM'].includes(key))return}else log(`🚫 ${ai.name} 的「${CARD[key].name}」失效。`,'important');
+      actions++;render();await aiPause(.42);
+    }else break;
   }
   if(G.running&&G.turn===ai.id)await drawFor(ai,false);
 }
