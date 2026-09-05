@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>爆炸貓 AI 對戰 4～8 人・操作強化版</title>
+<style>
+:root{
+  --bg:#130f1a;--panel:#211a2e;--panel2:#2b203b;--line:#5a4770;--text:#fff8e8;--muted:#c9bfd4;
+  --accent:#ffb84d;--danger:#ff5b68;--good:#66df9b;--blue:#6db7ff;--purple:#c48cff;--card:#fffaf0;--ink:#292031;
+}
+*{box-sizing:border-box} html,body{height:100%;margin:0;font-family:Inter,system-ui,"Noto Sans TC","PingFang TC",sans-serif;background:radial-gradient(circle at 50% 12%,#322143 0,#1d1527 36%,#100c16 100%);color:var(--text);overflow:hidden}
+button,select{font:inherit}.hidden{display:none!important}
+#app{height:100%;display:grid;grid-template-rows:72px 1fr 214px;gap:10px;padding:10px}
+header{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#2b2038,#201829);border:1px solid #49395c;border-radius:18px;padding:10px 16px;box-shadow:0 18px 50px #0007}
+.brand{display:flex;align-items:center;gap:12px}.logo{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#ffcf62,#ff715e);font-size:28px;box-shadow:inset 0 0 0 2px #fff6}.brand h1{font-size:20px;margin:0}.brand small{color:var(--muted)}
+.topControls{display:flex;align-items:center;gap:8px}.pill{padding:7px 10px;border:1px solid #564468;border-radius:999px;color:#eee;background:#17111f;font-size:13px}.btn{border:0;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;background:#433451;color:white;box-shadow:0 5px 0 #191120;transition:.12s}.btn:hover{transform:translateY(-1px)}.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #191120}.btn.primary{background:linear-gradient(180deg,#ffbd55,#f08a3d);color:#2b1705}.btn.danger{background:linear-gradient(180deg,#ff7480,#d73d50)}.btn.good{background:linear-gradient(180deg,#72eaa8,#37b879);color:#072619}.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+main{min-height:0;display:grid;grid-template-columns:1fr 325px;gap:10px}.tableWrap{min-height:0;position:relative;background:radial-gradient(ellipse at center,#365f4e 0,#21483c 45%,#17372e 72%,#10261f 100%);border:8px solid #5c3a29;border-radius:46% / 16%;box-shadow:inset 0 0 0 4px #b07c51,inset 0 0 60px #0007,0 20px 70px #0009;overflow:hidden}
+#seats{position:absolute;inset:0}.seat{position:absolute;width:178px;min-height:102px;border-radius:18px;background:linear-gradient(180deg,#30233f,#1a1423);border:2px solid #6b587b;padding:9px 10px 30px;box-shadow:0 10px 30px #0007;transition:.2s}.seat.active{outline:3px solid var(--accent);transform:scale(1.04);z-index:3}.seat.targeted{outline:4px solid #ff626f!important;box-shadow:0 0 0 7px #ff626f33,0 0 34px #ff304ccc,0 10px 30px #0007!important;z-index:8;animation:targetPulse .55s ease-in-out infinite alternate}@keyframes targetPulse{from{filter:brightness(1)}to{filter:brightness(1.35)}}.seat.dead{filter:grayscale(1);opacity:.48}.seat.you{width:186px;min-height:106px;border-color:#ffd26a;background:linear-gradient(180deg,#4a352c,#251a25);box-shadow:0 0 0 3px #ffd26a28,0 12px 32px #0008}.seatName{font-size:14px;font-weight:900;display:flex;justify-content:space-between;align-items:center;gap:4px}.seatHandCount{display:inline-grid;place-items:center;min-width:38px;height:27px;padding:0 8px;border-radius:999px;background:#100b17;border:1px solid #766488;color:#fff;font-size:13px;font-weight:1000}.seat.you .seatHandCount{background:#ffcc62;color:#281704;border-color:#fff1bc;font-size:14px}.youBadge{display:inline-block;margin-left:4px;padding:2px 6px;border-radius:999px;background:#ffcf66;color:#2c1804;font-size:9px;font-weight:1000;vertical-align:1px}.seatMeta{font-size:11px;color:#bfb2c9;margin-top:4px;display:flex;gap:6px;flex-wrap:wrap}.avatar{font-size:25px;float:left;margin-right:7px}.miniCards{display:flex;gap:3px;margin-top:7px;padding-right:62px;min-height:18px}.miniCard{width:12px;height:18px;background:#fff4db;border-radius:3px;border:1px solid #7f6a53}.seat.you .miniCard{background:#ffdf8d;border-color:#fff0bd}.deadMark{color:#ff8a91;font-weight:900}
+.centerPile{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:26px}.pile{width:116px;height:154px;border-radius:16px;position:relative;display:grid;place-items:center;text-align:center;font-weight:900}.drawPile{background:repeating-linear-gradient(135deg,#301e43 0 12px,#482b5f 12px 24px);border:5px solid #f3d8ff;box-shadow:6px 8px 0 #100919,10px 14px 25px #0009;cursor:pointer}.discardPile{background:#f8f0df;color:#322536;border:4px solid #d9bda6;box-shadow:4px 6px 0 #6d4a3e,8px 12px 25px #0008}.pileCount{position:absolute;right:-10px;top:-10px;background:#ffb748;color:#251300;border-radius:999px;min-width:32px;height:32px;display:grid;place-items:center;border:2px solid white}.pileIcon{font-size:42px}.turnBanner{position:absolute;left:50%;top:12%;transform:translateX(-50%);background:#17101fd9;border:1px solid #69537d;border-radius:999px;padding:8px 18px;font-weight:900;box-shadow:0 8px 22px #0008;white-space:nowrap}
+.sidePanel{min-height:0;background:linear-gradient(180deg,#241a30,#17111f);border:1px solid #49385b;border-radius:18px;display:grid;grid-template-rows:auto auto 1fr;overflow:hidden}.sideHead{padding:12px 14px;border-bottom:1px solid #3e304e}.sideHead h2{font-size:15px;margin:0 0 6px}.ruleChips{display:flex;gap:5px;flex-wrap:wrap}.ruleChip{font-size:10px;border-radius:999px;padding:4px 7px;background:#392b48;color:#d9cce4}.statusBox{padding:10px 12px;border-bottom:1px solid #3e304e;display:grid;grid-template-columns:1fr 1fr;gap:6px}.stat{background:#120d18;border-radius:10px;padding:8px}.stat b{display:block;font-size:18px;color:#ffd57a}.stat span{font-size:10px;color:#a99ab6}.log{overflow:auto;padding:10px 12px;font-size:12px;line-height:1.5}.logEntry{padding:6px 7px;border-radius:8px;margin-bottom:5px;background:#1d1625;color:#d8cfde}.logEntry.important{background:#3a2430;color:#ffd8c3}.logEntry.ai{border-left:3px solid #9877ff}.logEntry.youlog{border-left:3px solid #ffd368}
+.bottom{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 292px;gap:10px}.handPanel,.actionPanel{background:linear-gradient(180deg,#241a30,#17111f);border:1px solid #49385b;border-radius:18px;padding:8px 10px;min-height:0}.handPanel{box-shadow:inset 0 1px 0 #ffffff0d}.handTop{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;gap:8px}.handTop h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}.handTop #handCount{display:inline-grid;place-items:center;min-width:34px;height:27px;padding:0 9px;border-radius:999px;background:#ffca5e;color:#2a1703;border:2px solid #fff0b5;font-size:15px;font-weight:1000;box-shadow:0 3px 10px #0005}.handTools{display:flex;align-items:center;gap:6px}.sortBtn{padding:6px 9px;font-size:11px;border-radius:9px}.hand{height:170px;display:block;overflow-x:auto;overflow-y:hidden;padding:3px 8px 6px;scrollbar-width:thin}.handInner{min-width:100%;width:max-content;height:100%;display:flex;align-items:flex-end;justify-content:center;padding:0 4px}.card{flex:0 0 122px;height:164px;margin-right:-8px;border-radius:15px;background:linear-gradient(180deg,#fffdf5,#f1dfc2);color:var(--ink);border:2px solid #fff;box-shadow:0 9px 18px #0008;position:relative;padding:11px 8px 9px;cursor:pointer;transition:.15s;user-select:none}.card:hover{transform:translateY(-8px);z-index:4}.card.selected{transform:translateY(-13px);outline:4px solid #ffcf5e;z-index:6}.card .emoji{font-size:36px;display:block;margin-top:4px}.card .name{font-size:13.5px;font-weight:1000;line-height:1.12}.card .desc{font-size:9.5px;color:#65566d;margin-top:5px}.card .paw{position:absolute;right:6px;top:6px;font-size:15px}.card .cardIndex{position:absolute;left:6px;top:6px;min-width:24px;height:24px;padding:0 5px;border-radius:8px;display:grid;place-items:center;background:#21182bd9;color:#fff;border:1px solid #ffffff99;font-size:11px;font-weight:1000;box-shadow:0 2px 7px #0005}.card .tag{position:absolute;left:6px;bottom:6px;background:#2c2137;color:#fff;padding:2px 5px;border-radius:7px;font-size:8px}.card.bomb{background:linear-gradient(180deg,#301010,#a51f28);color:white}.card.defuse{background:linear-gradient(180deg,#dfffe9,#94e6b1)}.card.nope{background:linear-gradient(180deg,#ebe1ff,#b8a0ef)}.card.attack{background:linear-gradient(180deg,#ffe1e1,#ff9d94)}.card.cat{background:linear-gradient(180deg,#fff9d8,#ffd9a0)}
+.actionPanel{display:flex;flex-direction:column;gap:8px}.actionPanel h3{margin:0;font-size:14px}.selection{min-height:42px;padding:8px;background:#110c17;border-radius:10px;color:#cfc3d8;font-size:11px}.actionBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hint{font-size:10px;line-height:1.45;color:#a99cb3;margin-top:auto}.dangerText{color:#ff8f97}.goodText{color:#7ee3a7}
+.actionFlash{position:absolute;left:50%;top:24%;transform:translate(-50%,-50%);z-index:20;min-width:390px;max-width:72%;pointer-events:none;display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 18px;border-radius:20px;background:linear-gradient(180deg,#1b1325f2,#0e0a14f2);border:2px solid #8c6ba5;box-shadow:0 18px 50px #000c,0 0 30px #9c6cff44;animation:actionPop .18s ease-out}.actionFlash.danger{border-color:#ff6875;box-shadow:0 18px 50px #000c,0 0 38px #ff304c88}.actionFlash.good{border-color:#62dda0}.actionWho,.actionTo{min-width:92px;text-align:center;font-weight:1000;font-size:15px}.actionWho .av,.actionTo .av{display:block;font-size:28px;margin-bottom:2px}.actionArrow{font-size:28px;color:#ffcc67;font-weight:1000}.actionCardPop{width:112px;min-height:122px;border-radius:14px;background:linear-gradient(180deg,#fffdf5,#efd8b7);color:#271d2e;border:3px solid #fff;padding:9px;text-align:center;box-shadow:0 10px 24px #0009;animation:cardPunch .42s ease-out}.actionCardPop .big{font-size:37px;line-height:1}.actionCardPop b{display:block;font-size:12px;margin-top:5px}.actionCardPop small{display:block;font-size:9px;color:#6b5b72;margin-top:3px}.actionText{font-size:11px;color:#d9cfdf;margin-top:3px}.seat.actionSource{outline:4px solid #ffd05e!important;box-shadow:0 0 0 7px #ffd05e2b,0 0 30px #ffc83f88!important;z-index:8}@keyframes actionPop{from{opacity:0;transform:translate(-50%,-42%) scale(.9)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}@keyframes cardPunch{0%{transform:scale(.45) rotate(-9deg);opacity:0}65%{transform:scale(1.12) rotate(2deg);opacity:1}100%{transform:scale(1)}}
+.nopePreview{margin:12px 0;padding:12px;border-radius:16px;background:#120d18;border:1px solid #5a466b}.nopeRoute{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap}.nopePerson,.nopeTarget{min-width:96px;text-align:center;padding:8px 10px;border-radius:12px;background:#21172c;border:1px solid #5c476c;font-weight:1000}.nopePerson .big,.nopeTarget .big{font-size:27px;display:block}.nopeTarget{border-color:#ff6b78;box-shadow:0 0 18px #ff405433}.nopeActionCard{min-width:126px;text-align:center;padding:9px 11px;border-radius:13px;background:linear-gradient(180deg,#fffdf6,#ecd9bd);color:#2a2030;border:3px solid #fff;box-shadow:0 7px 18px #0007}.nopeActionCard .big{font-size:30px;display:block}.nopeActionCard b{font-size:12px;display:block}.nopeArrow{font-size:24px;color:#ffd066;font-weight:1000}.nopeState{margin-top:10px;padding:8px 10px;border-radius:10px;background:#201629;color:#e5d9ec;font-size:12px;font-weight:800;text-align:center}.nopeState.off{background:#381b25;color:#ffd0d5}.nopeState.on{background:#173126;color:#bff0d1}.nopeChainInfo{margin-top:7px;text-align:center;color:#b8a8c3;font-size:11px}.modalBack{position:fixed;inset:0;background:#08060dbb;display:grid;place-items:center;z-index:50;backdrop-filter:blur(5px)}.modal{width:min(620px,92vw);max-height:82vh;overflow:auto;background:linear-gradient(180deg,#2a1f37,#17111f);border:1px solid #68527e;border-radius:20px;box-shadow:0 26px 80px #000d;padding:18px}.modal h2{margin:0 0 10px;font-size:20px}.modal p{color:#cbbfd4;font-size:13px}.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}.choice{background:#392b48;border:1px solid #665278;border-radius:12px;padding:10px;color:white;cursor:pointer;text-align:center}.choice:hover{background:#4a375f}.choice .big{font-size:28px}.futureRow{display:flex;gap:12px;justify-content:center;margin:14px 0}.futureCard{width:138px;min-height:156px;background:#fff6e7;color:#2c2232;border-radius:14px;padding:11px;text-align:center;position:relative;border:3px solid #fff;box-shadow:0 8px 20px #0006}.futureCard .big{font-size:36px;margin-top:18px}.futureIndex{position:absolute;left:8px;top:8px;display:grid;place-items:center;width:31px;height:31px;border-radius:50%;background:#2b2037;color:#fff;font-size:16px;font-weight:1000;box-shadow:0 3px 9px #0005}.futureOrderLabel{font-size:10px;font-weight:900;color:#7b5260;margin-top:5px}.futureCard.first{outline:4px solid #ffbe4b;box-shadow:0 0 0 7px #ffbe4b25,0 8px 20px #0006}.futureControls{display:flex;gap:5px;justify-content:center;margin-top:8px}.futureControls button{border:0;border-radius:7px;padding:6px 10px;font-weight:1000;cursor:pointer}.bombInsertModal{width:min(1180px,98vw);overflow:hidden}.bombInsertStage{display:grid;grid-template-columns:145px minmax(0,1fr);gap:18px;align-items:center;margin:14px 0}.bombDrag{height:184px;border-radius:18px;background:linear-gradient(180deg,#3d1015,#b82431);border:3px solid #ffb0b6;display:grid;place-items:center;text-align:center;color:white;font-weight:1000;cursor:grab;box-shadow:0 12px 26px #0008,0 0 28px #ff405433}.bombDrag:active{cursor:grabbing}.bombDrag .bombEmoji{font-size:48px;line-height:1}.deckSpreadWrap{min-width:0}.deckLabels{display:flex;justify-content:space-between;color:#d8cce1;font-size:11px;font-weight:900;margin-bottom:7px}.deckSpread{height:212px;display:flex;align-items:center;overflow-x:auto;padding:18px 12px 24px;border-radius:16px;background:linear-gradient(180deg,#120d19,#1d1427);border:1px solid #4d3b5e;scrollbar-width:thin}.deckBack{flex:0 0 46px;height:108px;border-radius:7px;background:repeating-linear-gradient(135deg,#352047 0 7px,#59336e 7px 14px);border:2px solid #e8d7f4;box-shadow:2px 4px 8px #0008;display:grid;place-items:center;font-size:12px;color:#ffe49a}.insertSlot{flex:0 0 18px;height:136px;border:0;background:transparent;position:relative;cursor:pointer;padding:0}.insertSlot:before{content:'';position:absolute;left:5px;top:5px;width:6px;height:126px;border-radius:4px;background:#ffffff16;transition:.15s}.insertSlot:hover:before,.insertSlot.dragOver:before{background:#ffd05f;box-shadow:0 0 14px #ffca45}.insertSlot:hover{flex-basis:25px}.insertSlot.edge:after{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;font-weight:900;color:#d7c9df}.insertSlot.bottomEdge:after{content:'牌底'}.insertSlot.topEdge:after{content:'牌頂'}.bombInsertHelp{padding:9px 11px;background:#120d18;border-radius:11px;color:#cbbfd4;font-size:11px;line-height:1.55}.bombInsertActions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}.stealModal{width:min(860px,94vw)}.stealHint{padding:10px 12px;border-radius:12px;background:#130e1a;border:1px solid #4d3c5c;color:#d6cadf;font-size:12px;line-height:1.55;margin-bottom:12px}.stealBackGrid{display:flex;justify-content:center;align-items:flex-end;flex-wrap:wrap;gap:10px;padding:12px;min-height:160px;border-radius:16px;background:radial-gradient(circle at 50% 20%,#2b1c39,#120d18)}.stealCardBack{width:90px;height:126px;border-radius:13px;border:2px solid #e7d8f2;background:repeating-linear-gradient(135deg,#332043 0 9px,#5a356d 9px 18px);box-shadow:0 9px 18px #0008;cursor:pointer;position:relative;color:#ffe6a0;font-weight:1000;font-size:28px;transition:.15s}.stealCardBack:hover{transform:translateY(-10px) rotate(-1deg);box-shadow:0 14px 24px #000a,0 0 20px #ffcf5e44}.stealCardBack small{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font-size:10px;color:#fff;opacity:.8}.stealReveal{margin-top:12px;text-align:center;padding:12px;border-radius:14px;background:#1a1222;border:1px solid #574366}.stealReveal .big{font-size:44px}.stealReveal b{display:block;font-size:16px;margin-top:4px}
+.helpBtn{width:42px;height:42px;border-radius:50%;padding:0;display:grid;place-items:center;font-size:22px;font-weight:1000;background:linear-gradient(180deg,#ffe08a,#ffb84d);color:#2b1705;border:2px solid #fff1b6;box-shadow:0 7px 20px #0007,0 0 16px #ffbf4540;cursor:pointer;transition:.15s}.helpBtn:hover{transform:translateY(-2px) scale(1.05);box-shadow:0 10px 24px #0009,0 0 22px #ffbf4560}.helpModal{width:min(1040px,96vw);max-height:90vh;padding:0;overflow:hidden}.helpHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 12px;border-bottom:1px solid #513e63;background:linear-gradient(180deg,#342544,#24192f)}.helpHead h2{margin:0;font-size:23px}.helpClose{width:38px;height:38px;border-radius:12px;border:1px solid #715a84;background:#1b1323;color:#fff;font-size:20px;cursor:pointer}.helpTabs{display:flex;gap:7px;padding:12px 18px;background:#17101f;border-bottom:1px solid #493858;overflow-x:auto}.helpTab{white-space:nowrap;border:1px solid #655078;background:#2b2038;color:#eee2f4;border-radius:12px;padding:9px 14px;font-weight:900;cursor:pointer}.helpTab.active{background:#ffbd52;color:#2b1904;border-color:#ffe6a2}.helpBody{max-height:calc(90vh - 126px);overflow:auto;padding:18px 20px 24px}.helpPage{display:none}.helpPage.active{display:block}.helpHero{padding:15px 17px;border-radius:17px;background:linear-gradient(135deg,#3a2948,#20162a);border:1px solid #654d78;margin-bottom:14px}.helpHero b{color:#ffd36d}.flowGuide{display:flex;align-items:stretch;gap:7px;flex-wrap:wrap;margin:14px 0}.flowStep{flex:1 1 150px;padding:12px;border-radius:14px;background:#21182b;border:1px solid #574469;text-align:center}.flowStep .n{display:inline-grid;place-items:center;width:27px;height:27px;border-radius:50%;background:#ffbd52;color:#291803;font-weight:1000;margin-bottom:5px}.helpRulesGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.helpRule{padding:12px 14px;border-radius:14px;background:#191120;border:1px solid #493858;line-height:1.55;color:#ded4e4}.helpRule strong{color:#ffd36d}.comboGuide{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.comboCard{padding:16px;border-radius:17px;background:linear-gradient(180deg,#30223d,#191120);border:1px solid #624b75;min-height:180px}.comboCard .comboBig{font-size:31px;font-weight:1000;color:#ffd36d}.comboExample{margin-top:10px;padding:9px;border-radius:10px;background:#100b16;color:#d5c7de;font-size:11px;line-height:1.5}.cardGuideGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}.guideCard{display:grid;grid-template-columns:70px 1fr;gap:11px;padding:12px;border-radius:16px;background:#191120;border:1px solid #4e3b60;min-height:124px}.guideCardVisual{height:100px;border-radius:12px;background:linear-gradient(180deg,#fffaf0,#ead7bd);color:#281e30;border:3px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-shadow:0 6px 15px #0007}.guideCardVisual .e{font-size:32px;line-height:1}.guideCardVisual b{font-size:10px;margin-top:5px;line-height:1.15;padding:0 4px}.guideCardText h4{margin:0 0 5px;font-size:14px;color:#ffd36d}.guideCardText p{margin:0;color:#d7ccdd;font-size:11px;line-height:1.52}.guideCardText .tag{display:inline-block;margin-top:7px;padding:3px 6px;border-radius:7px;background:#30223c;color:#cdbedd;font-size:9px;font-weight:900}.helpNote{margin-top:13px;padding:10px 12px;border-left:4px solid #ffbd52;background:#251a2f;border-radius:8px;color:#dcd0e2;font-size:12px;line-height:1.55}.helpKey{display:inline-block;padding:1px 6px;border-radius:6px;background:#fff2d2;color:#38240a;font-weight:1000}.turnExample{margin-top:10px;padding:11px 13px;border-radius:12px;background:#100b16;color:#d9ccdf;line-height:1.65;font-size:12px}@media(max-width:760px){.helpRulesGrid,.comboGuide{grid-template-columns:1fr}.cardGuideGrid{grid-template-columns:1fr}.helpBody{padding:14px}.helpHead{padding:14px}.helpTabs{padding:10px 12px}}
+.startScreen{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 50% 18%,#442a58,#160f20 62%,#0b0810);display:grid;place-items:center}.startCard{width:min(760px,94vw);padding:28px;background:#21182cdd;border:1px solid #604a73;border-radius:28px;box-shadow:0 30px 100px #000c}.startCard h1{font-size:34px;margin:0 0 8px}.startCard p{color:#cbbfd3;line-height:1.6}.playerCount{display:flex;gap:8px;margin:16px 0;flex-wrap:wrap}.countBtn{width:58px;height:58px;border-radius:16px;border:1px solid #725988;background:#332442;color:white;font-size:20px;font-weight:900;cursor:pointer}.countBtn.active{background:#ffb84d;color:#281603;border-color:#fff0b5}.startRules{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}.startRules div{padding:10px;background:#17101f;border-radius:12px;font-size:12px;color:#d8cfe0}
+
+/* 抽牌小特效：普通抽牌與釜底抽薪刻意採用不同動態 */
+.drawFxCard{position:fixed;z-index:95;width:72px;height:98px;border-radius:11px;display:grid;place-items:center;text-align:center;font-weight:1000;pointer-events:none;transform-origin:center;box-shadow:0 12px 28px #000b;border:3px solid #f8eaff;background:repeating-linear-gradient(135deg,#301e43 0 9px,#56356f 9px 18px);color:#fff;will-change:transform,opacity,left,top}
+.drawFxCard .fxBack{font-size:29px;text-shadow:0 2px 6px #0009}.drawFxCard .fxLabel{position:absolute;left:50%;bottom:-25px;transform:translateX(-50%);white-space:nowrap;padding:4px 8px;border-radius:999px;background:#17101fe8;border:1px solid #73588b;color:#f8efff;font-size:10px;box-shadow:0 5px 15px #0008}
+.drawFxCard.reveal{background:linear-gradient(180deg,#fffdf5,#efd8b7);color:#271d2e;border-color:#fff}.drawFxCard.reveal .fxBack{font-size:28px}.drawFxCard.reveal .fxName{font-size:9px;line-height:1.1;padding:0 4px}.drawFxCard.bottomFx{background:repeating-linear-gradient(135deg,#173e35 0 9px,#286653 9px 18px);border-color:#9cf0c7;box-shadow:0 12px 28px #000b,0 0 24px #5de0a066}.drawFxCard.bottomFx .fxLabel{background:#123128ef;border-color:#5fe0a0;color:#dffff0}
+.drawPile.drawPulse{animation:drawPilePulse .34s ease-out}.drawPile.bottomPulse{animation:bottomPilePulse .58s ease-out}
+@keyframes drawPilePulse{0%{transform:translateY(0) scale(1)}45%{transform:translateY(-5px) scale(1.045);filter:brightness(1.35)}100%{transform:translateY(0) scale(1)}}
+@keyframes bottomPilePulse{0%{transform:translateY(0) rotate(0)}22%{transform:translateY(5px) rotate(-1deg);filter:brightness(1.1)}48%{transform:translateY(-3px) rotate(1deg);filter:brightness(1.4)}100%{transform:translateY(0) rotate(0)}}
+
+
+.aiSpeedControl{display:flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid #564468;border-radius:12px;background:#17111f;color:#ded3e6;font-size:11px;font-weight:800;white-space:nowrap}.aiSpeedControl input{width:108px;accent-color:#ffb84d}.aiSpeedControl b{min-width:42px;color:#ffd36d;text-align:right;font-size:11px}.defuseNote{position:absolute;right:8px;bottom:8px;display:flex;align-items:center;gap:4px;padding:5px 8px;border-radius:999px;border:1px solid #5a476b;background:#120d18e8;font-size:10px;font-weight:1000;box-shadow:0 3px 10px #0006;cursor:help;user-select:none}.defuseNote.yes{color:#9ef0bd;border-color:#4f9f71;background:#10241aee}.defuseNote.no{color:#ffadb4;border-color:#a94a55;background:#2b1218ee}.seat.noteFlash{animation:noteFlash .35s ease-out}@keyframes noteFlash{0%{filter:brightness(1)}45%{filter:brightness(1.7)}100%{filter:brightness(1)}}.seat.targetSelectable{cursor:pointer;outline:3px dashed #79ddff!important;box-shadow:0 0 0 6px #58cfff25,0 0 28px #4ed6ff99,0 10px 30px #0007!important;z-index:9;animation:selectTargetPulse .7s ease-in-out infinite alternate}.seat.targetSelectable:hover{transform:translate(-50%,-50%) scale(1.08)!important;outline-style:solid!important;filter:brightness(1.2)}.pickTag{position:absolute;left:50%;top:-13px;bottom:auto;transform:translateX(-50%);padding:3px 8px;border-radius:999px;background:#58d7ff;color:#08202a;font-size:9px;font-weight:1000;white-space:nowrap;box-shadow:0 3px 10px #0007}@keyframes selectTargetPulse{from{filter:brightness(1)}to{filter:brightness(1.18)}}.targetPickPrompt{position:absolute;left:50%;top:19%;transform:translate(-50%,-50%);z-index:35;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:16px;background:#11101cf2;border:2px solid #68d8ff;box-shadow:0 14px 40px #000b,0 0 30px #42d2ff55;font-weight:1000;pointer-events:auto}.targetPickPrompt small{display:block;color:#beeefe;font-size:10px;font-weight:700;margin-top:2px}.targetPickPrompt button{border:1px solid #6a5a79;background:#2b2135;color:#fff;border-radius:9px;padding:6px 9px;cursor:pointer}
+
+.toast{position:fixed;left:50%;top:86px;transform:translateX(-50%);z-index:70;background:#140f1bdc;color:white;padding:10px 16px;border:1px solid #604c72;border-radius:999px;box-shadow:0 10px 35px #0008;pointer-events:none;animation:toast 2.2s forwards}@keyframes toast{0%{opacity:0;transform:translate(-50%,-8px)}12%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-8px)}}
+@media(max-width:1100px){#app{grid-template-rows:64px 1fr 214px}.sidePanel{display:none}.bottom{grid-template-columns:minmax(0,1fr) 270px}.seat{width:130px}.card{flex-basis:106px;height:154px}.actionFlash{min-width:330px;max-width:80%}}
+</style>
+</head>
+<body>
+<div id="startScreen" class="startScreen">
+  <div class="startCard">
+    <h1>💥 爆炸貓・AI 桌遊</h1>
+    <p>4～8 人單機對戰。你對抗多名會判斷危險、會使用特殊組合，並依局勢與近期互動選擇目標的 AI。</p>
+    <div class="playerCount" id="playerCount"></div>
+    <div class="startRules">
+      <div>🃏 <b>無限制出牌</b><br>最後抽 1 張結束回合。</div>
+      <div>🧠 <b>AI 會算牌</b><br>知道頂牌危險時會自救或轉嫁。</div>
+      <div>🎯 <b>AI 目標判斷</b><br>會依牌況與近期互動選擇目標，不會固定追打一人。</div>
+    </div>
+    <button class="btn primary" id="startBtn" style="width:100%;font-size:18px;padding:14px">開始 6 人局</button>
+  </div>
+</div>
+<div id="app" class="hidden">
+<header>
+  <div class="brand"><div class="logo">😼</div><div><h1>爆炸貓 AI 對戰</h1><small id="deckMode">普通牌組</small></div></div>
+  <div class="topControls"><span class="pill" id="roundPill">第 1 輪</span><span class="pill" id="alivePill">存活 0</span><label class="aiSpeedControl" title="調整 AI 思考與出牌間隔"><span>AI反應</span><input id="aiSpeed" type="range" min="0.5" max="1.5" step="0.1" value="1"><b id="aiSpeedVal">1.0秒</b></label><button class="btn" id="restartBtn">重新開始</button><button class="helpBtn" id="helpBtn" title="遊戲教學" aria-label="遊戲教學">?</button></div>
+</header>
+<main>
+  <div class="tableWrap">
+    <div id="seats"></div>
+    <div class="turnBanner" id="turnBanner">準備中</div><div id="actionFx"></div>
+    <div class="centerPile">
+      <div class="pile drawPile" id="drawPile"><span class="pileIcon">🐾</span><span>抽牌堆</span><span class="pileCount" id="drawCount">0</span></div>
+      <div class="pile discardPile" id="discardPile"><span class="pileIcon" id="discardIcon">🗑️</span><span id="discardName">棄牌堆</span><span class="pileCount" id="discardCount">0</span></div>
+    </div>
+  </div>
+  <aside class="sidePanel">
+    <div class="sideHead"><h2>規則與牌況</h2><div class="ruleChips"><span class="ruleChip">2同：隨機偷1</span><span class="ruleChip">3同：指定牌名</span><span class="ruleChip">5不同：撿棄牌</span></div></div>
+    <div class="statusBox"><div class="stat"><b id="topRisk">?</b><span>已知頂牌</span></div><div class="stat"><b id="attackDebt">0</b><span>目前待執行回合</span></div></div>
+    <div class="log" id="log"></div>
+  </aside>
+</main>
+<section class="bottom">
+  <div class="handPanel"><div class="handTop"><h3>你的手牌 <span id="handCount"></span></h3><div class="handTools"><button class="btn sortBtn" id="sortBtn">自動整理：開</button><span class="pill" id="selectedCount">已選 0</span></div></div><div class="hand" id="hand"></div></div>
+  <div class="actionPanel"><h3>行動</h3><div class="selection" id="selectionText">選擇 1 張功能牌，或 2 / 3 / 5 張組成特殊規則。</div><div class="actionBtns"><button class="btn primary" id="playBtn">打出所選</button><button class="btn good" id="drawBtn">結束出牌 → 抽牌</button><button class="btn" id="clearBtn">清除選擇</button><button class="btn" id="noteHintBtn" title="玩家座位可用右鍵做拆除筆記">📝 右鍵筆記</button></div><div class="hint">普通回合：<b>回合開始 → 無限制出牌 → 抽牌 → 回合結束</b>。若使用跳過或攻擊，會直接結束目前回合而不抽牌。</div></div>
+</section>
+</div>
+<div id="modalRoot"></div>
+<script>
+'use strict';
+const CARD={
+  DEFUSE:{name:'拆除',emoji:'🧯',type:'defuse',desc:'解除爆炸並把爆炸貓塞回牌堆'},
+  BOMB:{name:'爆炸貓',emoji:'💥',type:'bomb',desc:'沒有拆除就淘汰'},
+  BOTTOM:{name:'釜底抽薪',emoji:'⬇️',type:'action',desc:'從牌堆最底部抽 1 張並結束回合'},
+  ALTER:{name:'改寫未來',emoji:'🔮',type:'action',desc:'看最上 3 張並重新排序'},
+  FAVOR:{name:'恩惠',emoji:'🤲',type:'action',desc:'指定玩家，由對方選 1 張給你'},
+  SHUFFLE:{name:'洗混',emoji:'🌀',type:'action',desc:'洗混整個抽牌堆'},
+  ATTACK:{name:'攻擊卡2X',emoji:'⚔️',type:'attack',desc:'自己不抽牌，下一位承受 2 回合'},
+  TARGET:{name:'鎖定攻擊2X',emoji:'🎯',type:'attack',desc:'指定玩家承受 2 回合'},
+  SKIP:{name:'跳過卡',emoji:'⏭️',type:'action',desc:'不抽牌，結束目前 1 回合'},
+  SEE:{name:'預見未來',emoji:'👁️',type:'action',desc:'偷看最上面 3 張，不能改順序'},
+  NOPE:{name:'休想卡',emoji:'🚫',type:'nope',desc:'取消一個行動或特殊組合'},
+  MELON:{name:'瓜貓',emoji:'🍉',type:'cat',desc:'普通貓牌'},
+  POTATO:{name:'毛茸茸馬鈴薯貓',emoji:'🥔',type:'cat',desc:'普通貓牌'},
+  WILD:{name:'野貓',emoji:'🐾',type:'cat',desc:'可視為任一普通貓'},
+  TACO:{name:'塔可貓',emoji:'🌮',type:'cat',desc:'普通貓牌'},
+  RAINBOW:{name:'口吐彩虹貓',emoji:'🌈',type:'cat',desc:'普通貓牌'},
+  BEARD:{name:'鬍子貓',emoji:'🧔',type:'cat',desc:'普通貓牌'}
+};
+const KEYS=Object.keys(CARD); const BYNAME=Object.fromEntries(KEYS.map(k=>[CARD[k].name,k]));
+const NORMAL_COUNTS={BOTTOM:4,ALTER:4,FAVOR:4,SHUFFLE:4,MELON:4,POTATO:4,WILD:4,TACO:4,RAINBOW:4,BEARD:4,ATTACK:3,TARGET:3,SKIP:6,SEE:3,NOPE:5,DEFUSE:7};
+const PAW_COUNTS={SHUFFLE:2,FAVOR:2,ALTER:2,BOTTOM:3,TARGET:2,MELON:3,POTATO:3,WILD:2,TACO:3,RAINBOW:3,BEARD:3,ATTACK:2,SKIP:4,SEE:3,NOPE:4,DEFUSE:3};
+const AVATARS=['😼','🐯','🦊','🐸','🐼','🐰','🦁','🐵'];
+let G=null, aiReactionMs=1000, autoSort=true, selected=new Set(), pendingTargetSelection=null;
+const $=s=>document.querySelector(s); const sleep=ms=>new Promise(r=>setTimeout(r,ms)); const aiPause=(factor=1)=>sleep(Math.max(120,Math.round(aiReactionMs*factor)));
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function makeCard(key,paw=false){return {id:crypto.randomUUID?.()||Math.random().toString(36).slice(2),key,paw}}
+function log(msg,cls=''){const d=document.createElement('div');d.className='logEntry '+cls;d.innerHTML=msg;$('#log').prepend(d)}
+function toast(msg){let t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.append(t);setTimeout(()=>t.remove(),2200)}
+const HAND_ORDER={DEFUSE:0,NOPE:1,SKIP:2,ATTACK:3,TARGET:4,BOTTOM:5,SHUFFLE:6,ALTER:7,SEE:8,FAVOR:9,WILD:10,MELON:11,POTATO:12,TACO:13,RAINBOW:14,BEARD:15,BOMB:99};
+function sortedHandView(hand){if(!autoSort)return [...hand];return [...hand].sort((a,b)=>(HAND_ORDER[a.key]??50)-(HAND_ORDER[b.key]??50)||Number(a.paw)-Number(b.paw)||a.key.localeCompare(b.key))}
+function actionMeta(key,opts={}){if(key==='COMBO')return {emoji:opts.emoji||'🃏',name:opts.label||'特殊組合',desc:opts.desc||''};return CARD[key]||{emoji:opts.emoji||'✨',name:opts.label||key,desc:opts.desc||''}}
+async function showActionEvent(actor,key,target=null,opts={}){if(!G||!actor)return;if(!target&&key==='ATTACK'&&G.running)target=G.players[nextAlive(actor.id)];const host=$('#actionFx'),meta=actionMeta(key,opts);if(!host)return;host.innerHTML='';document.querySelectorAll('.seat.targeted,.seat.actionSource').forEach(x=>x.classList.remove('targeted','actionSource'));let src=document.querySelector(`.seat[data-seat="${actor.id}"]`);if(src)src.classList.add('actionSource');let tar=target?document.querySelector(`.seat[data-seat="${target.id}"]`):null;if(tar)tar.classList.add('targeted');let box=document.createElement('div');box.className='actionFlash '+(opts.theme||((key==='BOMB'||key==='ATTACK'||key==='TARGET')?'danger':key==='DEFUSE'?'good':''));let targetHtml=target?`<div class=actionArrow>➜</div><div class=actionTo><span class=av>${target.avatar}</span>${target.name}</div>`:'';box.innerHTML=`<div class=actionWho><span class=av>${actor.avatar}</span>${actor.name}<div class=actionText>出牌</div></div><div class=actionCardPop><div class=big>${meta.emoji}</div><b>${meta.name}</b><small>${opts.desc||meta.desc||''}</small></div>${targetHtml}`;host.append(box);await new Promise(r=>setTimeout(r,actor.ai?Math.max(520,Math.round((opts.long?1050:760)*(aiReactionMs/1000))):(opts.long?1150:820)));box.remove();if(src)src.classList.remove('actionSource');if(tar)tar.classList.remove('targeted')}
+function getCounts(players){let counts={...NORMAL_COUNTS}; if(players>=8) for(const [k,v] of Object.entries(PAW_COUNTS)) counts[k]=(counts[k]||0)+v; return counts}
+function initGame(n){
+  selected.clear(); let counts=getCounts(n), deck=[], defuses=[];
+  for(const [k,v] of Object.entries(counts)){for(let i=0;i<v;i++){let paw=n>=8 && i>= (NORMAL_COUNTS[k]||0); let c=makeCard(k,paw); if(k==='DEFUSE')defuses.push(c); else deck.push(c)}}
+  shuffle(deck); shuffle(defuses);
+  let players=[]; for(let i=0;i<n;i++) players.push({id:i,name:i===0?'你':`AI-${i}`,ai:i!==0,avatar:AVATARS[i],hand:[],alive:true,hate:Array(n).fill(0),knownTop:[],turnsTaken:0,recentTargets:[],attackCaution:false,defuseNote:true});
+  for(const p of players){for(let i=0;i<7;i++) p.hand.push(deck.pop()); p.hand.push(defuses.pop())}
+  deck.push(...defuses); for(let i=0;i<n-1;i++) deck.push(makeCard('BOMB')); shuffle(deck);
+  G={n,players,deck,discard:[],turn:0,round:1,debt:1,running:true,knownTop:[],targetHistory:[],actionSeq:0,lastAction:null};
+  $('#startScreen').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#log').innerHTML='';
+  $('#deckMode').textContent=n>=8?'普通卡＋貓肉球卡':'普通卡'; log(`🎴 ${n} 人局開始。牌庫已放入 <b>${n-1}</b> 張爆炸貓。`,'important');
+  render(); if(G.players[0].ai) aiTurn();
+}
+function activePlayers(){return G.players.filter(p=>p.alive)}
+function nextAlive(from){let i=from; do{i=(i+1)%G.n}while(!G.players[i].alive); return i}
+function render(){if(!G)return; renderSeats();renderHand();renderPiles();updateActions();}
+function renderSeats(){
+  const box=$('#seats'); box.innerHTML=''; const positions=seatPositions(G.n);
+  G.players.forEach((p,i)=>{let eligible=!!(pendingTargetSelection&&p.alive&&(!pendingTargetSelection.excludeSelf||i!==0));let d=document.createElement('div');d.className='seat'+(i===G.turn&&p.alive?' active':'')+(p.alive?'':' dead')+(i===0?' you':'')+(eligible?' targetSelectable':'');d.dataset.seat=i;d.style.left=positions[i][0]+'%';d.style.top=positions[i][1]+'%';d.style.transform='translate(-50%,-50%)'+(i===G.turn&&p.alive?' scale(1.04)':'');
+    d.innerHTML=`<div class="avatar">${p.avatar}</div><div class="seatName"><span>${p.name}${i===0?'<span class=youBadge>YOU</span>':''}</span><span class="seatHandCount">${p.alive?p.hand.length:'☠'}</span></div><div class="seatMeta"><span>${p.ai?'AI 玩家':'真人玩家'}</span>${p.alive?'<span>手牌 '+p.hand.length+' 張</span>':'<span class=deadMark>已爆炸淘汰</span>'}</div><div class="miniCards">${p.alive?'<i class="miniCard"></i>'.repeat(Math.min(10,p.hand.length)):''}</div>${p.alive?`<div class="defuseNote ${p.defuseNote?'yes':'no'}" title="玩家筆記：右鍵切換是否記為持有拆除卡">📝🧯 ${p.defuseNote?'有':'無'}</div>`:''}${eligible?'<div class="pickTag">點擊選擇</div>':''}`;
+    d.onclick=e=>{if(!eligible||!pendingTargetSelection)return;e.preventDefault();const pending=pendingTargetSelection;pendingTargetSelection=null;document.querySelector('.targetPickPrompt')?.remove();renderSeats();renderPiles();updateActions();pending.resolve(p)};
+    d.oncontextmenu=e=>{e.preventDefault();if(!p.alive)return;p.defuseNote=!p.defuseNote;d.classList.add('noteFlash');setTimeout(()=>d.classList.remove('noteFlash'),360);renderSeats();toast(`${p.name} 的拆除筆記：${p.defuseNote?'標記為有':'標記為無'}`)}; box.append(d)});
+}
+
+function seatPositions(n){
+  const map={4:[[50,84],[13,36],[50,10],[87,36]],5:[[50,84],[11,54],[23,13],[77,13],[89,54]],6:[[50,84],[12,62],[13,22],[50,9],[87,22],[88,62]],7:[[50,84],[11,65],[11,29],[33,10],[67,10],[89,29],[89,65]],8:[[50,84],[13,70],[10,38],[21,13],[50,8],[79,13],[90,38],[87,70]]};return map[n];
+}
+function renderHand(){let hand=G.players[0].hand, view=sortedHandView(hand), el=$('#hand');const oldScroll=el.scrollLeft,oldCount=+(el.dataset.handCount??-1);el.innerHTML='';$('#handCount').textContent=hand.length;const inner=document.createElement('div');inner.className='handInner';el.append(inner); view.forEach((c,idx)=>{let C=CARD[c.key],d=document.createElement('div');d.className='card '+(C.type==='cat'?'cat ':C.type==='attack'?'attack ':C.type==='nope'?'nope ':C.type==='defuse'?'defuse ':C.type==='bomb'?'bomb ':'')+(selected.has(c.id)?'selected':'');d.dataset.id=c.id;d.title=`手牌 ${idx+1}：${C.name}`;d.innerHTML=`<span class=cardIndex>${idx+1}</span>${c.paw?'<span class=paw>🐾</span>':''}<span class=emoji>${C.emoji}</span><div class=name>${C.name}</div><div class=desc>${C.desc}</div><span class=tag>${C.type==='cat'?'貓牌':C.type==='attack'?'攻擊':C.type==='nope'?'反制':C.type==='defuse'?'保命':'功能'}</span>`;d.onclick=()=>{if(G.turn!==0||!G.players[0].alive)return;selected.has(c.id)?selected.delete(c.id):selected.add(c.id);renderHand();updateActions()};inner.append(d)});el.dataset.handCount=hand.length;requestAnimationFrame(()=>{const centered=Math.max(0,(el.scrollWidth-el.clientWidth)/2);el.scrollLeft=oldCount===hand.length?Math.min(oldScroll,Math.max(0,el.scrollWidth-el.clientWidth)):centered});
+}
+function renderPiles(){
+  $('#drawCount').textContent=G.deck.length;$('#discardCount').textContent=G.discard.length;let last=G.discard.at(-1);$('#discardIcon').textContent=last?CARD[last.key].emoji:'🗑️';$('#discardName').textContent=last?CARD[last.key].name:'棄牌堆';$('#roundPill').textContent=`第 ${G.round} 輪`;$('#alivePill').textContent=`存活 ${activePlayers().length}`;$('#attackDebt').textContent=G.debt;let kt=G.players[0].knownTop[0];$('#topRisk').textContent=kt?CARD[kt].emoji:'?';$('#turnBanner').textContent=G.players[G.turn].alive?`${G.players[G.turn].name} 的回合${G.debt>1?` · 尚有 ${G.debt} 回合`:''}`:'等待中';
+}
+function updateActions(){
+  let me=G.players[0], mine=G.turn===0&&me.alive&&G.running&&!pendingTargetSelection, cards=[...selected].map(id=>me.hand.find(c=>c.id===id)).filter(Boolean), valid=comboType(cards)|| (cards.length===1&&['action','attack'].includes(CARD[cards[0].key].type));
+  $('#playBtn').disabled=!mine||!valid;$('#drawBtn').disabled=!mine;$('#clearBtn').disabled=!selected.size;$('#selectedCount').textContent=`已選 ${selected.size}`;
+  let txt='選擇 1 張功能牌，或 2 / 3 / 5 張組成特殊規則。'; if(cards.length){let combo=comboType(cards);txt=combo?`可使用特殊組合：${combo==='PAIR'?'2 張相同 → 隨機偷 1 張':combo==='TRIPLE'?'3 張相同 → 宣告指定牌名': '5 張不同 → 從棄牌堆挑 1 張'}`:`已選：${cards.map(c=>CARD[c.key].name).join('、')}`;}$('#selectionText').textContent=txt;
+}
+function comboType(cards){if(cards.length===2 && sameCombo(cards))return'PAIR';if(cards.length===3&&sameCombo(cards))return'TRIPLE';if(cards.length===5&&new Set(cards.map(c=>c.key)).size===5)return'FIVE';return null}
+function sameCombo(cards){let keys=cards.map(c=>c.key); if(new Set(keys).size===1)return true; // wild can pair/triple with cat only
+  const nonWild=keys.filter(k=>k!=='WILD'); return nonWild.length>0 && nonWild.every(k=>k===nonWild[0]) && CARD[nonWild[0]].type==='cat';
+}
+function removeCards(p,cards){for(const c of cards){let idx=p.hand.findIndex(x=>x.id===c.id);if(idx>=0)G.discard.push(p.hand.splice(idx,1)[0])}}
+function cardById(p,id){return p.hand.find(c=>c.id===id)}
+
+const TUTORIAL_TEXT={
+  DEFUSE:'抽到爆炸貓時立即使用，避免淘汰。之後把爆炸貓秘密插回抽牌堆任意位置；你可以自己挑位置或隨機插入。',
+  BOMB:'抽到後立即公開。若手上沒有拆除卡，就立刻淘汰。爆炸貓不能靠「休想」取消。',
+  BOTTOM:'不抽牌頂，改從整副牌最底部抽 1 張，然後結束目前回合。這是一次正式抽牌。',
+  ALTER:'查看牌頂 3 張，並自由重排成 1、2、3。數字 1 永遠代表下一張會被抽到的牌。',
+  FAVOR:'指定一名玩家。由被指定者自己選 1 張手牌交給你；不是你從他手上挑。',
+  SHUFFLE:'把整個抽牌堆重新洗混。洗完仍是你的回合，除非再用其他牌，最後仍要抽牌。',
+  ATTACK:'你立刻結束目前回合且不抽牌，下一位玩家承受 2 個回合。攻擊可連鎖、可累積。',
+  TARGET:'和攻擊 2X 類似，但可以指定要承受 2 回合的玩家；出牌前會清楚顯示目標。',
+  SKIP:'立即跳過目前這 1 個回合且不抽牌。若身上還欠多個攻擊回合，一張跳過只消除 1 回合。',
+  SEE:'查看牌頂 3 張，依 1、2、3 顯示抽牌順序，但不能改動。1 就是下一張。',
+  NOPE:'取消一個行動或特殊組合；不是自己的回合也能出。休想還可以再被休想：奇數張取消、偶數張恢復。不能取消爆炸貓或拆除。',
+  MELON:'普通貓牌。單張沒有功能，但可用於 2 張相同、3 張相同，以及 5 張不同的特殊出法。',
+  POTATO:'普通貓牌。單張沒有功能，但可用於特殊組合。',
+  WILD:'萬用普通貓，可視為任一種普通貓來湊貓牌組合；不能變成拆除、攻擊、休想等功能牌。',
+  TACO:'普通貓牌。單張沒有功能，但可用於特殊組合。',
+  RAINBOW:'普通貓牌。單張沒有功能，但可用於特殊組合。',
+  BEARD:'普通貓牌。單張沒有功能，但可用於特殊組合。'
+};
+function tutorialCardHTML(k){const c=CARD[k],cat=c.type==='cat'?'普通貓':c.type==='attack'?'攻擊牌':c.type==='nope'?'反制牌':c.type==='defuse'?'保命牌':c.type==='bomb'?'危險牌':'功能牌';return `<div class="guideCard"><div class="guideCardVisual"><div class="e">${c.emoji}</div><b>${c.name}</b></div><div class="guideCardText"><h4>${c.name}</h4><p>${TUTORIAL_TEXT[k]||c.desc}</p><span class="tag">${cat}</span></div></div>`}
+function openTutorial(){
+  const root=$('#modalRoot'); if(!root)return;
+  const back=document.createElement('div');back.className='modalBack';back.dataset.tutorial='1';
+  const order=['BOMB','DEFUSE','ATTACK','TARGET','SKIP','NOPE','SEE','ALTER','SHUFFLE','BOTTOM','FAVOR','WILD','MELON','POTATO','TACO','RAINBOW','BEARD'];
+  back.innerHTML=`<div class="modal helpModal">
+    <div class="helpHead"><div><h2>❓ 爆炸貓遊戲教學</h2><small style="color:#c9bfd4">遊戲中隨時可以回來查，不會影響目前回合。</small></div><button class="helpClose" title="關閉">✕</button></div>
+    <div class="helpTabs"><button class="helpTab active" data-tab="basic">基礎規則</button><button class="helpTab" data-tab="combo">特殊出法</button><button class="helpTab" data-tab="cards">卡牌圖鑑</button></div>
+    <div class="helpBody">
+      <section class="helpPage active" data-page="basic">
+        <div class="helpHero"><b>勝利目標：</b>想辦法不要抽到爆炸貓。抽到後若沒有「拆除」就淘汰；最後唯一存活的玩家獲勝。</div>
+        <div class="flowGuide"><div class="flowStep"><span class="n">1</span><br><b>回合開始</b><br><small>確認目前是否欠攻擊回合</small></div><div class="flowStep"><span class="n">2</span><br><b>無限制出牌</b><br><small>可以不出，也能連續出很多張</small></div><div class="flowStep"><span class="n">3</span><br><b>結束出牌</b><br><small>準備承擔抽牌風險</small></div><div class="flowStep"><span class="n">4</span><br><b>抽 1 張</b><br><small>抽牌完成後結束這一回合</small></div></div>
+        <div class="helpRulesGrid"><div class="helpRule"><strong>💥 爆炸與拆除</strong><br>抽到爆炸貓必須公開。有拆除就消耗 1 張拆除，然後把爆炸貓秘密插回牌堆任意位置；沒有拆除則淘汰。</div><div class="helpRule"><strong>⚔️ 攻擊回合</strong><br>攻擊 2X 會讓目標承受 2 個回合，而且可以疊加。跳過只消除目前 1 個回合，AI 也會考慮自己剩餘的強制回合。</div><div class="helpRule"><strong>🚫 休想反制</strong><br>出牌者、牌名與目標會先顯示，之後才決定是否休想。三張相同要等休想結束後才宣告牌名；五張不同也要等休想結束後才挑棄牌。休想也能再被休想，直到沒人繼續接。</div><div class="helpRule"><strong>🃏 資訊隱藏</strong><br>隨機偷牌時，只會看到重新洗亂過的牌背；牌背順序與目標玩家真正的手牌排列無關。</div></div>
+        <div class="turnExample"><b>典型回合：</b>預見未來 → 發現第 1 張是爆炸貓 → 使用洗混／跳過／攻擊避開 → 若仍選擇抽牌，抽到的那一張才結束目前回合。</div>
+      </section>
+      <section class="helpPage" data-page="combo">
+        <div class="helpHero">特殊組合<b>不限貓牌</b>。只要牌名符合條件，功能牌也可以拿來湊；一旦當作特殊組合使用，就<b>不發動那些牌原本的效果</b>。</div>
+        <div class="comboGuide"><div class="comboCard"><div class="comboBig">2 張相同</div><h3>隨機抽 1 張</h3><p>指定一名玩家，從他重新洗亂、全部蓋住的手牌中抽 1 張。</p><div class="comboExample">例：跳過＋跳過 → 不執行跳過，而是從指定玩家手中隨機抽 1 張。</div></div><div class="comboCard"><div class="comboBig">3 張相同</div><h3>宣告 1 種牌</h3><p>指定一名玩家並宣告牌名。若他有該牌，必須交給你 1 張；沒有就拿不到。</p><div class="comboExample">例：3 張瓜貓 → 宣告「拆除」。若對方有拆除，就必須交出 1 張。</div></div><div class="comboCard"><div class="comboBig">5 張不同</div><h3>翻棄牌堆任選 1 張</h3><p>打出 5 張名稱不同的牌，從棄牌堆自行挑選 1 張加入手牌。</p><div class="comboExample">可以拿回棄牌堆中的「拆除」與其他功能牌；爆炸貓不屬於可回收目標。</div></div></div>
+        <div class="helpNote"><b>判定方式：</b>以卡牌名稱判斷「相同／不同」。普通版與貓肉球版的同名牌仍視為相同牌；貓肉球只是組牌標記。</div>
+      </section>
+      <section class="helpPage" data-page="cards">
+        <div class="helpHero"><b>卡牌圖鑑：</b>下面列出本遊戲目前所有卡牌。卡面圖示與名稱和遊戲中的牌一致。</div>
+        <div class="cardGuideGrid">${order.map(tutorialCardHTML).join('')}</div>
+        <div class="helpNote"><span class="helpKey">1</span> 在預見／改寫未來中代表「下一張」；<span class="helpKey">2</span>、<span class="helpKey">3</span> 依序是之後的第二、第三張。</div>
+      </section>
+    </div></div>`;
+  root.append(back);
+  const close=()=>back.remove();back.querySelector('.helpClose').onclick=close;
+  back.addEventListener('click',e=>{if(e.target===back)close()});
+  back.querySelectorAll('.helpTab').forEach(btn=>btn.onclick=()=>{back.querySelectorAll('.helpTab').forEach(x=>x.classList.toggle('active',x===btn));back.querySelectorAll('.helpPage').forEach(p=>p.classList.toggle('active',p.dataset.page===btn.dataset.tab));back.querySelector('.helpBody').scrollTop=0});
+}
+function chooseModal(title,items,render,canCancel=false){return new Promise(resolve=>{let root=$('#modalRoot'),back=document.createElement('div');back.className='modalBack';back.innerHTML=`<div class=modal><h2>${title}</h2><div class=choices></div>${canCancel?'<button class="btn" style="margin-top:12px">取消</button>':''}</div>`;let ch=back.querySelector('.choices');items.forEach(it=>{let b=document.createElement('button');b.className='choice';b.innerHTML=render(it);b.onclick=()=>{back.remove();resolve(it)};ch.append(b)}); if(canCancel)back.querySelector('.btn').onclick=()=>{back.remove();resolve(null)};root.append(back)})}
+async function chooseTarget(excludeSelf=true,prompt='選擇玩家'){
+  if(pendingTargetSelection)return null;
+  return new Promise(resolve=>{
+    const host=$('#actionFx');const hint=document.createElement('div');hint.className='targetPickPrompt';hint.innerHTML=`<div>🎯 ${prompt}<small>直接點擊發光的玩家欄框</small></div><button type=button>取消</button>`;host.append(hint);
+    const finish=v=>{if(!pendingTargetSelection)return;pendingTargetSelection=null;hint.remove();renderSeats();renderPiles();updateActions();resolve(v)};
+    hint.querySelector('button').onclick=()=>finish(null);
+    pendingTargetSelection={excludeSelf,prompt,resolve:v=>{hint.remove();resolve(v)}};
+    renderSeats();updateActions();
+    $('#turnBanner').textContent=`🎯 ${prompt} · 點擊玩家欄框`;
+  });
+}
+async function humanPlay(){
+  if(pendingTargetSelection)return;
+  let me=G.players[0], cards=[...selected].map(id=>cardById(me,id)).filter(Boolean);if(!cards.length)return;let combo=comboType(cards);selected.clear();
+  if(combo){await executeCombo(me,cards,combo,false);render();return}
+  if(cards.length!==1)return; let c=cards[0]; if(['DEFUSE','BOMB'].includes(c.key))return;
+  let target=null; if(['FAVOR','TARGET'].includes(c.key)){target=await chooseTarget(true,c.key==='FAVOR'?'恩惠：選擇要索取卡牌的玩家':'鎖定攻擊：選擇要攻擊的玩家');if(!target){render();return}}
+  removeCards(me,[c]); render(); await showActionEvent(me,c.key,target); let canceled=await reactionNope(me,c.key,target); if(canceled){log(`🚫 ${CARD[c.key].name} 被休想取消。`,'important');render();return}
+  await executeAction(me,c.key,target,false); render();
+}
+async function executeCombo(p,cards,combo,isAI){
+  let target=null;
+  if(combo!=='FIVE'){
+    target=isAI?aiChooseTarget(p,combo):await chooseTarget(true,combo==='PAIR'?'2 張相同：選擇要隨機抽牌的玩家':'3 張相同：選擇要宣告牌名的玩家');
+    if(!target)return;
+  }
+
+  // 重要：三張與五張的「後續選擇」必須放在休想判定之後。
+  // 休想的人只知道特殊組合與目標，不會先看到宣告牌名或準備拿回哪張棄牌。
+  removeCards(p,cards);render();
+  const comboLabel=combo==='PAIR'?'2 張相同':combo==='TRIPLE'?'3 張相同':'5 張不同';
+  const comboDesc=combo==='PAIR'?'若未被休想：從目標洗亂的牌背抽 1 張':combo==='TRIPLE'?'若未被休想：接著才宣告 1 種牌':`若未被休想：接著才從棄牌堆選 1 張`;
+  await showActionEvent(p,'COMBO',target,{label:comboLabel,desc:comboDesc,emoji:combo==='FIVE'?'♻️':combo==='TRIPLE'?'🎯':'🃏'});
+  const canceled=await reactionNope(p,'COMBO',target,{label:comboLabel,desc:comboDesc,emoji:combo==='FIVE'?'♻️':combo==='TRIPLE'?'🎯':'🃏'});
+  if(canceled){log(`🚫 ${p.name} 的特殊組合被休想取消。`,'important');render();return}
+
+  if(combo==='PAIR'){
+    if(target.hand.length){let stolen;if(p.ai){let idx=Math.floor(Math.random()*target.hand.length);stolen=target.hand.splice(idx,1)[0]}else stolen=await humanStealHiddenCard(target);if(stolen){p.hand.push(stolen);addHate(target,p,2);log(`🃏 ${p.name} 用 2 張相同卡，從洗亂的牌背中抽走 ${target.name} 的 1 張牌。`,p.ai?'ai':'youlog')}}
+    return;
+  }
+
+  if(combo==='TRIPLE'){
+    const extra=isAI?aiDesiredCard(target):await chooseModal('🎯 三張相同生效：現在宣告你要的牌',KEYS.filter(k=>k!=='BOMB'),k=>`<div class=big>${CARD[k].emoji}</div><b>${CARD[k].name}</b>`,false);
+    let idx=target.hand.findIndex(c=>c.key===extra);if(idx>=0){p.hand.push(target.hand.splice(idx,1)[0]);addHate(target,p,3);log(`🎯 ${p.name} 用 3 張相同卡向 ${target.name} 宣告「${CARD[extra].name}」，成功拿走 1 張！`,'important')}else log(`🎯 ${p.name} 宣告「${CARD[extra].name}」，但 ${target.name} 沒有。`,p.ai?'ai':'youlog');
+    return;
+  }
+
+  // 五張不同：休想判定完成後，才讓出牌者看到並選擇棄牌。
+  const recoverable=G.discard.map((c,i)=>({c,i})).filter(x=>x.c.key!=='BOMB');
+  if(!recoverable.length){log(`♻️ ${p.name} 的五張不同已生效，但棄牌堆沒有可回收牌。`,'important');return}
+  let extra=isAI?aiPickDiscard():await chooseModal(
+    '♻️ 五張不同生效：現在從棄牌堆任選 1 張（拆除也可以）',
+    recoverable.sort((a,b)=>(b.c.key==='DEFUSE')-(a.c.key==='DEFUSE')),
+    x=>`<div class=big>${CARD[x.c.key].emoji}</div><b>${CARD[x.c.key].name}</b>${x.c.key==='DEFUSE'?'<small style="display:block;color:#77e6a5;font-weight:900;margin-top:4px">★ 可回收拆除卡</small>':''}`,
+    false
+  );
+  let idx=isAI?extra:extra.i;if(isAI&&typeof idx!=='number')idx=G.discard.findIndex(c=>c.id===extra.id);let c=G.discard.splice(idx,1)[0];if(c){p.hand.push(c);log(`♻️ ${p.name} 用 5 張不同卡，從棄牌堆拿回「${CARD[c.key].name}」。`,'important')}
+}
+
+async function executeAction(p,key,target,isAI){
+  const name=CARD[key].name, shownTarget=key==='ATTACK'?G.players[nextAlive(p.id)]:target; log(`${CARD[key].emoji} ${p.name} 使用「${name}」${shownTarget?` → ${shownTarget.name}`:''}。`,p.ai?'ai':'youlog');
+  switch(key){
+    case'SHUFFLE':shuffle(G.deck);clearKnown();break;
+    case'SEE':{let top=G.deck.slice(-3).reverse().map(c=>c.key);p.knownTop=top;if(!isAI)await showFuture(top,false);break}
+    case'ALTER':{let top=G.deck.splice(Math.max(0,G.deck.length-3)).reverse();clearKnown();if(isAI){top=aiOrderFuture(p,top);for(let i=top.length-1;i>=0;i--)G.deck.push(top[i]);p.knownTop=top.map(c=>c.key)}else{top=await showReorder(top);for(let i=top.length-1;i>=0;i--)G.deck.push(top[i]);p.knownTop=top.map(c=>c.key)}break}
+    case'FAVOR':{if(target.hand.length){let chosen=target.ai?aiGiveCard(target,p):await humanGiveCard(target,p);p.hand.push(chosen);addHate(target,p,1.4);markTarget(p,target);log(`🤲 ${target.name} 給了 ${p.name} 1 張牌。`,target.ai?'ai':'youlog')}break}
+    case'ATTACK':{let t=nextAlive(p.id);G.turn=t;G.debt+=2-1;addHate(G.players[t],p,1.2);endTurnNoDraw(p,true);return}
+    case'TARGET':{G.turn=target.id;G.debt+=2-1;addHate(target,p,2.8);markTarget(p,target);endTurnNoDraw(p,true);return}
+    case'SKIP':endTurnNoDraw(p,false);return;
+    case'BOTTOM':await drawFor(p,true);return;
+  }
+}
+function addHate(victim,source,amount){if(victim.ai&&victim.id!==source.id)victim.hate[source.id]+=amount}
+function markTarget(source,target){source.recentTargets.push(target.id);if(source.recentTargets.length>5)source.recentTargets.shift();G.targetHistory.push({source:source.id,target:target.id,seq:++G.actionSeq});if(G.targetHistory.length>10)G.targetHistory.shift()}
+function clearKnown(){G.players.forEach(p=>p.knownTop=[])}
+async function humanGiveCard(human,to){let c=await chooseModal(`${to.name} 向你索取恩惠`,human.hand.filter(c=>c.key!=='BOMB'),c=>`<div class=big>${CARD[c.key].emoji}</div><b>${CARD[c.key].name}</b>`);human.hand.splice(human.hand.findIndex(x=>x.id===c.id),1);return c}
+async function humanStealHiddenCard(target){return new Promise(resolve=>{
+  const root=$('#modalRoot'),back=document.createElement('div');back.className='modalBack';
+  const shuffled=target.hand.map(c=>({id:c.id}));shuffle(shuffled);
+  back.innerHTML=`<div class="modal stealModal"><h2>🃏 從 ${target.name} 抽 1 張</h2><div class="stealHint">對方的手牌已經重新洗亂，而且全部只顯示牌背。這個排列與 ${target.name} 真正的手牌順序無關；每次偷牌都會重新洗牌。</div><div class="stealBackGrid"></div></div>`;
+  const grid=back.querySelector('.stealBackGrid');
+  shuffled.forEach((item,i)=>{const b=document.createElement('button');b.className='stealCardBack';b.innerHTML=`🐾<small>牌背 ${i+1}</small>`;b.onclick=()=>{const idx=target.hand.findIndex(c=>c.id===item.id);if(idx<0)return;const c=target.hand.splice(idx,1)[0];grid.querySelectorAll('button').forEach(x=>x.disabled=true);grid.innerHTML=`<div class="stealReveal"><div class=big>${CARD[c.key].emoji}</div><b>抽到：${CARD[c.key].name}</b></div>`;setTimeout(()=>{back.remove();resolve(c)},520)};grid.append(b)});
+  root.append(back);
+})}
+function aiGiveCard(from,to){let scored=from.hand.map(c=>({c,s:aiCardValue(c.key)})).sort((a,b)=>a.s-b.s);let c=scored[0].c;from.hand.splice(from.hand.findIndex(x=>x.id===c.id),1);return c}
+function aiCardValue(k){return({DEFUSE:100,NOPE:80,SKIP:65,ATTACK:60,TARGET:58,SHUFFLE:55,BOTTOM:52,ALTER:50,SEE:36,FAVOR:28,WILD:25,MELON:20,POTATO:20,TACO:20,RAINBOW:20,BEARD:20}[k]||10)}
+
+async function showDrawEffect(p,c,bottom=false){
+  const pile=$('#drawPile'); if(!pile)return;
+  const pr=pile.getBoundingClientRect();
+  const target=p.id===0?document.querySelector('.handPanel'):document.querySelector(`.seat[data-seat="${p.id}"]`);
+  const tr=target?target.getBoundingClientRect():pr;
+  const fx=document.createElement('div'); fx.className='drawFxCard'+(bottom?' bottomFx':'');
+  const publicReveal=!p.ai||c.key==='BOMB';
+  fx.innerHTML=`<div class=fxBack>🐾</div><div class=fxLabel>${bottom?'⬇️ 釜底抽薪 · 從牌底抽':'🎴 抽牌'}</div>`;
+  document.body.append(fx);
+  pile.classList.remove('drawPulse','bottomPulse'); void pile.offsetWidth; pile.classList.add(bottom?'bottomPulse':'drawPulse');
+  const startX=pr.left+pr.width/2-36;
+  const startY=(bottom?pr.bottom-22:pr.top+8)-49;
+  const endX=tr.left+tr.width/2-36;
+  const endY=(p.id===0?tr.top+22:tr.top+tr.height/2-49);
+  fx.style.left=startX+'px';fx.style.top=startY+'px';fx.style.opacity='0';
+  const midX=bottom?startX-54:startX+20;
+  const midY=bottom?pr.bottom+18:pr.top-26;
+  const a=fx.animate([
+    {left:startX+'px',top:startY+'px',transform:`rotate(${bottom?8:-5}deg) scale(.78)`,opacity:0},
+    {left:midX+'px',top:midY+'px',transform:`rotate(${bottom?-14:8}deg) scale(1.06)`,opacity:1,offset:.32},
+    {left:endX+'px',top:endY+'px',transform:'rotate(0deg) scale(1)',opacity:1}
+  ],{duration:(bottom?700:520),easing:'cubic-bezier(.2,.8,.25,1)',fill:'forwards'});
+  await a.finished.catch(()=>{});
+  if(publicReveal){
+    fx.classList.add('reveal');
+    fx.innerHTML=`<div class=fxBack>${CARD[c.key].emoji}</div><div class=fxName>${CARD[c.key].name}</div><div class=fxLabel>${bottom?'⬇️ 牌底抽到':'🎴 抽到'}：${CARD[c.key].name}</div>`;
+    fx.animate([{transform:'rotateY(90deg) scale(.9)'},{transform:'rotateY(0deg) scale(1.06)'},{transform:'rotateY(0deg) scale(1)'}],{duration:360,easing:'ease-out'});
+    await sleep(bottom?380:300);
+  }
+  fx.animate([{opacity:1,transform:'scale(1)'},{opacity:0,transform:'scale(.88) translateY(8px)'}],{duration:180,fill:'forwards'});
+  await sleep(170); fx.remove();
+  pile.classList.remove('drawPulse','bottomPulse');
+}
+async function drawFor(p,bottom=false){
+  let c=bottom?G.deck.shift():G.deck.pop(); if(!c)return; clearKnownAfterDraw(c.key,bottom); render(); await showDrawEffect(p,c,bottom); if(c.key==='BOMB'){log(`💥 ${p.name} 抽到了爆炸貓！`,'important');render();await showActionEvent(p,'BOMB',null,{label:'抽到爆炸貓！',desc:'危險！',theme:'danger',long:true});let d=p.hand.find(x=>x.key==='DEFUSE');if(d){p.hand.splice(p.hand.indexOf(d),1);G.discard.push(d);let oldLen=G.deck.length,pos=p.ai?aiBombInsert(p):await askBombInsert();G.deck.splice(pos,0,c);clearKnown();if(p.ai&&pos===oldLen)p.knownTop=['BOMB'];if(p.ai&&G.debt>1)p.attackCaution=true;log(`🧯 ${p.name} 使用拆除，將爆炸貓放回牌堆。`,'important');render();await showActionEvent(p,'DEFUSE',null,{desc:'解除爆炸並放回牌堆',theme:'good'}); if(!p.ai)toast('成功拆除！');endTurnAfterDraw(p)}else{p.alive=false;G.discard.push(c,...p.hand.splice(0));log(`☠️ ${p.name} 爆炸淘汰！`,'important'); if(p.id===0)toast('你爆炸了！');checkWin();if(G.running)advanceAfterDeath(p)}}else{p.hand.push(c);if(!p.ai)toast(`抽到：${CARD[c.key].name}`);endTurnAfterDraw(p)}render();
+}
+function clearKnownAfterDraw(k,bottom=false){if(bottom)return;G.players.forEach(p=>{if(p.knownTop.length)p.knownTop.shift()})}
+function aiBombInsert(p){
+  const n=G.deck.length;
+  const remainingForced=Math.max(0,G.debt-1); // 這次抽牌結束後，自己還欠幾個連續回合
+  const next=G.players[nextAlive(p.id)],punish=p.hate[next.id]||0;
+
+  // 被攻擊時的核心防呆：不論手上有什麼牌，都不把剛拆掉的炸彈
+  // 放進自己接下來必抽的範圍，避免攻擊/休想連鎖造成自殺。
+  if(remainingForced>0){
+    const highestSafe=Math.max(0,n-remainingForced);
+    return Math.floor(Math.random()*(highestSafe+1));
+  }
+
+  // 沒有剩餘強制回合時，才會依仇恨考慮把炸彈靠近下一家。
+  if(punish>3&&Math.random()<.48){let nearTop=Math.min(2,n);return n-Math.floor(Math.random()*(nearTop+1))}
+  return Math.floor(Math.random()*(n+1));
+}
+async function askBombInsert(){return new Promise(resolve=>{
+  const back=document.createElement('div');back.className='modalBack';
+  const count=G.deck.length;
+  back.innerHTML=`<div class="modal bombInsertModal"><h2>🧯 拆除成功：把爆炸貓插回牌堆</h2><p>整副牌都是蓋著的。拖曳左邊的爆炸貓到任一黃色插槽，或直接點插槽。你也可以完全隨機插入。</p><div class="bombInsertStage"><div class="bombDrag" draggable="true"><div><div class="bombEmoji">💥</div><div>爆炸貓</div><small>拖曳這張牌</small></div></div><div class="deckSpreadWrap"><div class="deckLabels"><span>◀ 牌堆底部</span><span>牌堆頂部／下一張 ▶</span></div><div class="deckSpread"></div></div></div><div class="bombInsertHelp">牌堆由左至右代表「底部 → 頂部」。每一道細縫都是合法位置；最右邊代表下一位玩家會直接抽到爆炸貓。</div><div class="bombInsertActions"><button class="btn" data-random>🎲 隨機插入</button></div></div>`;
+  const spread=back.querySelector('.deckSpread');
+  const finish=pos=>{back.remove();resolve(pos)};
+  const makeSlot=pos=>{let slot=document.createElement('button');slot.className='insertSlot'+(pos===0?' edge bottomEdge':'')+(pos===count?' edge topEdge':'');slot.dataset.pos=pos;slot.title=pos===0?'插在牌堆最底部':pos===count?'插在牌堆最頂部（下一張）':`插在第 ${pos} 與 ${pos+1} 張之間`;slot.onclick=()=>finish(pos);slot.ondragover=e=>{e.preventDefault();slot.classList.add('dragOver')};slot.ondragleave=()=>slot.classList.remove('dragOver');slot.ondrop=e=>{e.preventDefault();finish(pos)};return slot};
+  spread.append(makeSlot(0));
+  for(let i=0;i<count;i++){let card=document.createElement('div');card.className='deckBack';card.textContent='🐾';spread.append(card);spread.append(makeSlot(i+1))}
+  const bomb=back.querySelector('.bombDrag');bomb.ondragstart=e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain','BOMB')};
+  back.querySelector('[data-random]').onclick=()=>finish(Math.floor(Math.random()*(count+1)));
+  $('#modalRoot').append(back);
+  requestAnimationFrame(()=>{spread.scrollLeft=spread.scrollWidth});
+})}
+function endTurnAfterDraw(p){G.debt--;if(G.debt>0){G.turn=p.id}else{G.debt=1;G.turn=nextAlive(p.id);if(G.turn<=p.id)roundDecay()}scheduleNext()}
+function endTurnNoDraw(p,attackTransferred=false){
+  if(attackTransferred){ if(G.turn<=p.id)roundDecay();scheduleNext();return }
+  G.debt--;if(G.debt>0)G.turn=p.id;else{G.debt=1;G.turn=nextAlive(p.id);if(G.turn<=p.id)roundDecay()}scheduleNext();
+}
+function advanceAfterDeath(p){G.debt=1;G.turn=nextAlive(p.id);scheduleNext()}
+function roundDecay(){G.round++;G.players.forEach(p=>p.hate=p.hate.map(x=>x*.82))}
+function scheduleNext(){G.players.forEach(p=>{if(p.id!==G.turn)p.attackCaution=false});render();if(!G.running)return;if(G.players[G.turn].ai)setTimeout(aiTurn,Math.max(180,Math.round(aiReactionMs*.55)))}
+function checkWin(){let a=activePlayers();if(a.length===1){G.running=false;render();setTimeout(()=>gameOver(a[0]),300);return true}return false}
+function gameOver(w){let root=$('#modalRoot'),back=document.createElement('div');back.className='modalBack';back.innerHTML=`<div class=modal style="text-align:center"><div style="font-size:72px">${w.id===0?'🏆':'😼'}</div><h2>${w.id===0?'你贏了！':w.name+' 獲勝'}</h2><p>最後存活者取得勝利。</p><button class="btn primary" id=again>再玩一局</button></div>`;root.append(back);back.querySelector('#again').onclick=()=>{back.remove();initGame(G.n)}}
+function resolvedActionTarget(actor,key,target){
+  if(key==='ATTACK'&&actor&&G?.running)return G.players[nextAlive(actor.id)];
+  return target||null;
+}
+function nopeResponderOrder(fromId){
+  let ids=[],i=fromId;
+  for(let n=0;n<G.n-1;n++){i=nextAlive(i);ids.push(i)}
+  return ids;
+}
+async function reactionNope(actor,key,target,context={}){
+  const originalTarget=resolvedActionTarget(actor,key,target);
+  let canceled=false,chain=0,lastNope=null,guard=0;
+  while(guard++<80){
+    const fromId=lastNope?lastNope.id:actor.id;
+    const order=nopeResponderOrder(fromId);
+    let played=false;
+    for(const id of order){
+      const r=G.players[id];
+      if(!r?.alive||!r.hand.some(c=>c.key==='NOPE'))continue;
+      if(!lastNope&&r.id===actor.id)continue;
+      if(lastNope&&r.id===lastNope.id)continue;
+      let use=false;
+      const info={originalActor:actor,originalKey:key,originalTarget,canceled,chain,lastNope,context};
+      if(r.id===0)use=await askHumanNope(info);
+      else use=aiShouldNope(r,lastNope||actor,lastNope?'NOPE':key,originalTarget,canceled,info);
+      if(!use)continue;
+      if(r.ai)await aiPause(.35);
+
+      const c=r.hand.find(x=>x.key==='NOPE');
+      r.hand.splice(r.hand.indexOf(c),1);G.discard.push(c);
+      chain++;canceled=!canceled;
+      const opposed=lastNope||actor;
+      addHate(opposed,r,1.8);
+      const chainText=chain===1?'休想！':(canceled?'再休想！':'反休想！');
+      log(`🚫 ${r.name} 打出休想！${chain>1?`（第 ${chain} 張休想）`:''} 原效果目前${canceled?'取消':'恢復生效'}。`,'important');
+      render();
+      await showActionEvent(r,'NOPE',opposed,{desc:`${chainText} 原效果${canceled?'取消':'恢復'}`,long:chain>1});
+      lastNope=r;played=true;
+      break;
+    }
+    if(!played)break;
+  }
+  return canceled;
+}
+function aiShouldNope(ai,actor,key,target,current,info={}){
+  const originalActor=info.originalActor||actor;
+  const selfHit=target?.id===ai.id;
+  const hateActor=ai.hate[originalActor?.id]||0;
+  const hateTarget=target?(ai.hate[target.id]||0):0;
+  let value;
+  if(key==='NOPE'){
+    if(current){
+      if(selfHit)value=.025;
+      else value=.10+Math.min(.42,hateTarget*.055)+Math.min(.14,hateActor*.015);
+    }else{
+      value=selfHit?.76:.12+Math.min(.35,hateActor*.05);
+    }
+  }else{
+    value=selfHit?.82:.13+hateActor*.065;
+    if(key==='ATTACK'&&resolvedActionTarget(originalActor,key,target)?.id===ai.id)value=.86;
+    if(key==='TARGET'&&selfHit)value=.90;
+    if(key==='FAVOR'&&selfHit)value=.72;
+    if(key==='COMBO'&&selfHit)value=.78;
+  }
+  if(countKey(ai,'NOPE')<=1&&!selfHit)value*=.72;
+  return Math.random()<Math.min(.9,Math.max(.015,value));
+}
+async function askHumanNope(info){
+  const {originalActor,originalKey,originalTarget,canceled,chain,lastNope,context={}}=info;
+  return new Promise(resolve=>{
+    const back=document.createElement('div');back.className='modalBack';
+    const meta=originalKey==='COMBO'
+      ?{emoji:context.emoji||'🃏',name:context.label||'特殊組合'}
+      :(CARD[originalKey]||{emoji:'✨',name:originalKey});
+    const isCounter=!!lastNope;
+    const nextState=canceled?'恢復生效':'被取消';
+    const targetHtml=originalTarget?`<span class=nopeArrow>➜</span><div class=nopeTarget><span class=big>${originalTarget.avatar}</span>${originalTarget.name}<small style="display:block;color:#ffb5bc;margin-top:2px">被針對</small></div>`:'';
+    const chainMsg=isCounter
+      ?`${lastNope.name} 剛剛打出「休想」。你若再出一張休想，原本效果將<b>${nextState}</b>。`
+      :`先確認出牌者與目標，再決定是否使用「休想」。`;
+    back.innerHTML=`<div class=modal><h2>${isCounter?'🚫 要「休想」這張休想嗎？':'🚫 要使用「休想」嗎？'}</h2><p>${chainMsg}</p><div class=nopePreview><div class=nopeRoute><div class=nopePerson><span class=big>${originalActor.avatar}</span>${originalActor.name}<small style="display:block;color:#b9a9c5">原出牌者</small></div><span class=nopeArrow>➜</span><div class=nopeActionCard><span class=big>${meta.emoji}</span><b>${meta.name}</b>${context.desc?`<small style="display:block;margin-top:3px">${context.desc}</small>`:''}</div>${targetHtml}</div><div class="nopeState ${canceled?'off':'on'}">目前狀態：原效果 ${canceled?'❌ 已取消':'✅ 仍會生效'}</div>${chain?`<div class=nopeChainInfo>目前休想鏈：${chain} 張 · 再出一張後原效果會${nextState}</div>`:''}</div><div class=choices><button class=choice data-v=1>🚫 ${isCounter?'再出休想':'使用休想'}</button><button class=choice data-v=0>${isCounter?'不再反制':'放行'}</button></div></div>`;
+    $('#modalRoot').append(back);
+    const src=document.querySelector(`.seat[data-seat="${(lastNope||originalActor).id}"]`);
+    const tar=originalTarget?document.querySelector(`.seat[data-seat="${originalTarget.id}"]`):null;
+    if(src)src.classList.add('actionSource');if(tar)tar.classList.add('targeted');
+    const done=v=>{if(src)src.classList.remove('actionSource');if(tar)tar.classList.remove('targeted');back.remove();resolve(v)};
+    back.querySelectorAll('button').forEach(b=>b.onclick=()=>done(b.dataset.v==='1'));
+  });
+}
+async function showFuture(keys){return new Promise(resolve=>{let b=document.createElement('div');b.className='modalBack';b.innerHTML=`<div class=modal><h2>👁️ 預見未來</h2><p><b>數字就是抽牌順序。</b> 1 是下一張，接著 2、3；只能查看，不能改動。</p><div class=futureRow>${keys.map((k,i)=>`<div class="futureCard ${i===0?'first':''}"><span class=futureIndex>${i+1}</span><div class=big>${CARD[k].emoji}</div><b>${CARD[k].name}</b><div class=futureOrderLabel>${i===0?'下一張':`第 ${i+1} 張`}</div></div>`).join('')}</div><button class="btn primary" style="width:100%">知道了</button></div>`;$('#modalRoot').append(b);b.querySelector('button').onclick=()=>{b.remove();resolve()}})}
+async function showReorder(cards){return new Promise(resolve=>{let arr=[...cards],b=document.createElement('div');b.className='modalBack';function draw(){b.innerHTML=`<div class=modal><h2>🔮 改寫未來</h2><p><b>1 → 2 → 3 就是之後的抽牌順序。</b> 把你想先出現的牌移到 1。</p><div class=futureRow>${arr.map((c,i)=>`<div class="futureCard ${i===0?'first':''}"><span class=futureIndex>${i+1}</span><div class=big>${CARD[c.key].emoji}</div><b>${CARD[c.key].name}</b><div class=futureOrderLabel>${i===0?'下一張':`第 ${i+1} 張`}</div><div class=futureControls><button data-i=${i} data-d=-1 title="往前移">←</button><button data-i=${i} data-d=1 title="往後移">→</button></div></div>`).join('')}</div><button class="btn primary ok" style="width:100%">確認 1 → 2 → 3 順序</button></div>`;b.querySelectorAll('[data-i]').forEach(x=>x.onclick=()=>{let i=+x.dataset.i,j=i+(+x.dataset.d);if(j>=0&&j<arr.length){[arr[i],arr[j]]=[arr[j],arr[i]];draw()}});b.querySelector('.ok').onclick=()=>{b.remove();resolve(arr)}}draw();$('#modalRoot').append(b)})}
+function aiOrderFuture(p,cards){let bomb=cards.find(c=>c.key==='BOMB');if(!bomb)return cards.sort((a,b)=>aiCardValue(b.key)-aiCardValue(a.key));let safe=cards.filter(c=>c!==bomb).sort((a,b)=>aiCardValue(b.key)-aiCardValue(a.key));return [...safe,bomb]}
+function aiChooseTarget(ai,mode){let candidates=G.players.filter(p=>p.alive&&p.id!==ai.id);let ownHumanRecent=ai.recentTargets.filter(x=>x===0).length;let globalHumanRecent=G.targetHistory.slice(-6).filter(x=>x.target===0&&G.players[x.source]?.ai).length;let scored=candidates.map(t=>{let h=ai.hate[t.id]||0,hand=t.hand.length,leader=hand*.12;let antiDogpile=t.id===0?(ownHumanRecent*3.2+globalHumanRecent*2.4):0;let revenge=t.id===0&&h>=4?Math.min(antiDogpile*.65,h*.9):0;return {t,s:h*1.55+leader-antiDogpile+revenge+Math.random()*2}}).sort((a,b)=>b.s-a.s);let t=scored[0].t;markTarget(ai,t);return t}
+function aiDesiredCard(target){let desired=['DEFUSE','NOPE','SKIP','ATTACK','TARGET','SHUFFLE','ALTER','BOTTOM'];for(const k of desired)if(Math.random()<.65)return k;return desired[Math.floor(Math.random()*desired.length)]}
+function aiPickDiscard(){let best=-1,bs=-1;G.discard.forEach((c,i)=>{let s=aiCardValue(c.key);if(s>bs&&c.key!=='BOMB'){best=i;bs=s}});return best<0?G.discard.length-1:best}
+function aiKnownBomb(ai){return ai.knownTop[0]==='BOMB'}
+function countKey(p,k){return p.hand.filter(c=>c.key===k).length}
+function findComboAI(p){
+  // 5 distinct if discard has high value and hand is large
+  if(p.hand.length>=8&&G.discard.some(c=>aiCardValue(c.key)>=70)){
+    let uniq=[];for(const c of [...p.hand].sort((a,b)=>aiCardValue(a.key)-aiCardValue(b.key))){if(!uniq.some(x=>x.key===c.key)&&c.key!=='DEFUSE'&&c.key!=='NOPE')uniq.push(c);if(uniq.length===5)return{type:'FIVE',cards:uniq}}
+  }
+  let groups={};p.hand.forEach(c=>(groups[c.key]??=[]).push(c));let triple=Object.values(groups).find(g=>g.length>=3&&aiCardValue(g[0].key)<65);if(triple&&Math.random()<.28)return{type:'TRIPLE',cards:triple.slice(0,3)};let pair=Object.values(groups).find(g=>g.length>=2&&aiCardValue(g[0].key)<52);if(pair&&Math.random()<.22)return{type:'PAIR',cards:pair.slice(0,2)};return null;
+}
+async function aiTurn(){
+  if(!G.running)return;let ai=G.players[G.turn];if(!ai.ai||!ai.alive)return;render();await aiPause(.45);ai.turnsTaken++;
+  let safety=aiKnownBomb(ai); let actions=0;
+  while(G.running&&G.turn===ai.id&&actions<4){
+    let combo=findComboAI(ai); if(combo&&!safety){await executeCombo(ai,combo.cards,combo.type,true);actions++;render();await aiPause(.45);continue}
+    let key=null,target=null;
+    if(safety){
+      // 已知下一張會爆：優先把整個攻擊債轉走，其次跳過，再處理牌堆。
+      key=['ATTACK','TARGET','SKIP','ALTER','BOTTOM','SHUFFLE'].find(k=>countKey(ai,k)>0);
+      if(!key){await drawFor(ai,false);return}
+    } else if(G.debt>1||ai.attackCaution){
+      // 被攻擊、或剛在攻擊鏈中拆過炸彈：優先降低再次抽牌風險。
+      // Attack/Target 可以把整個剩餘回合債轉走；Skip 至少少抽一次。
+      if(countKey(ai,'ATTACK'))key='ATTACK';
+      else if(countKey(ai,'TARGET')){key='TARGET';target=aiChooseTarget(ai,'TARGET')}
+      else if(countKey(ai,'SKIP'))key='SKIP';
+      else if(countKey(ai,'SEE')&&ai.knownTop.length===0)key='SEE';
+      else if(countKey(ai,'ALTER')&&ai.knownTop.length===0)key='ALTER';
+      else break;
+    } else {
+      // See future sometimes
+      if(countKey(ai,'SEE')&&ai.knownTop.length===0&&Math.random()<.33)key='SEE';
+      else if(countKey(ai,'FAVOR')&&Math.random()<.12){key='FAVOR';target=aiChooseTarget(ai,'FAVOR')}
+      else if(countKey(ai,'TARGET')&&Math.random()<.11){key='TARGET';target=aiChooseTarget(ai,'TARGET')}
+      else if(countKey(ai,'ATTACK')&&Math.random()<.09)key='ATTACK';
+      else if(countKey(ai,'ALTER')&&Math.random()<.06)key='ALTER';
+      else break;
+    }
+    if(key){if(key==='TARGET'&&!target)target=aiChooseTarget(ai,'TARGET');if(key==='FAVOR'&&!target)target=aiChooseTarget(ai,'FAVOR');let c=ai.hand.find(x=>x.key===key);ai.hand.splice(ai.hand.indexOf(c),1);G.discard.push(c);render();await showActionEvent(ai,key,target);let canceled=await reactionNope(ai,key,target);if(!canceled){await executeAction(ai,key,target,true);if(['SKIP','ATTACK','TARGET','BOTTOM'].includes(key))return}else log(`🚫 ${ai.name} 的「${CARD[key].name}」失效。`,'important');actions++;safety=aiKnownBomb(ai);render();await aiPause(.45)}else break;
+  }
+  if(G.running&&G.turn===ai.id)await drawFor(ai,false);
+}
+// UI
+for(let n=4;n<=8;n++){let b=document.createElement('button');b.className='countBtn'+(n===6?' active':'');b.textContent=n;b.onclick=()=>{document.querySelectorAll('.countBtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#startBtn').textContent=`開始 ${n} 人局`;$('#startBtn').dataset.n=n};$('#playerCount').append(b)}$('#startBtn').dataset.n=6;
+$('#startBtn').onclick=()=>initGame(+$('#startBtn').dataset.n);$('#restartBtn').onclick=()=>{G.running=false;$('#startScreen').classList.remove('hidden');$('#app').classList.add('hidden')};
+$('#sortBtn').onclick=()=>{autoSort=!autoSort;$('#sortBtn').textContent=autoSort?'自動整理：開':'自動整理：關';renderHand()};
+$('#playBtn').onclick=humanPlay;$('#drawBtn').onclick=()=>{if(G&&G.turn===0&&G.players[0].alive&&!pendingTargetSelection)drawFor(G.players[0],false)};$('#clearBtn').onclick=()=>{selected.clear();renderHand();updateActions()};$('#noteHintBtn').onclick=()=>toast('在任一玩家座位上按滑鼠右鍵，可切換「拆除：有／無」筆記。');$('#drawPile').onclick=()=>{if(G&&G.turn===0&&G.players[0].alive&&!pendingTargetSelection)drawFor(G.players[0],false)};
+
+const aiSpeed=$('#aiSpeed'),aiSpeedVal=$('#aiSpeedVal');if(aiSpeed){const syncAISpeed=()=>{aiReactionMs=Math.round(parseFloat(aiSpeed.value)*1000);aiSpeedVal.textContent=`${parseFloat(aiSpeed.value).toFixed(1)}秒`};aiSpeed.addEventListener('input',syncAISpeed);syncAISpeed();}
+
+document.getElementById('helpBtn')?.addEventListener('click',openTutorial);
+</script>
+</body>
+</html>
